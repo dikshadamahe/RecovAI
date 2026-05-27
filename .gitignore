@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.env
+recovai_output/*.pkl
+*.pkl
+.DS_Store
