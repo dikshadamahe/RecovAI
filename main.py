@@ -28,10 +28,14 @@ import numpy as np
 import pandas as pd
 import joblib
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks
+from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+
+# ── Database ────────────────────────────────────────────────────────────────
+from database import init_db, get_db, save_prediction, save_report, get_recent_predictions, get_anomaly_predictions, get_prediction_by_id
 
 # ── Engine imports ─────────────────────────────────────────────────────────
 from engines.engine1_reagent import ReagentOptimizer, REAGENT_FEATURES
@@ -166,6 +170,7 @@ def _load_engines() -> None:
 
 @app.on_event("startup")
 async def startup() -> None:
+    init_db()          # create DB tables if they don't exist yet
     _load_engines()
 
 
@@ -200,7 +205,7 @@ def model_info():
 # ── Core prediction endpoint ──────────────────────────────────────────────────
 
 @app.post("/predict", tags=["prediction"])
-def predict(shift_in: ShiftInput):
+def predict(shift_in: ShiftInput, db: Session = Depends(get_db)):
     """
     Run all 4 analytical engines for a single shift.
 
@@ -248,7 +253,7 @@ def predict(shift_in: ShiftInput):
             "worst_psi": None, "flagged": [], "features": {}
         }
 
-    return {
+    response = {
         "predicted_recovery": round(predicted, 3),
         "shap":               shap_payload,
         "anomaly":            anomaly_result,
@@ -256,11 +261,20 @@ def predict(shift_in: ShiftInput):
         "drift":              drift_result,
     }
 
+    # ── Persist to database ───────────────────────────────────────────────
+    try:
+        db_record = save_prediction(db, shift_in.model_dump(), response)
+        response["db_id"] = db_record.id   # expose the row ID to the caller
+    except Exception as exc:
+        log.error(f"DB write failed (prediction still returned): {exc}")
+
+    return response
+
 
 # ── NLP report endpoint ────────────────────────────────────────────────────
 
 @app.post("/report", tags=["report"])
-def generate_report(req: ReportRequest):
+def generate_report(req: ReportRequest, db: Session = Depends(get_db)):
     """Generate a plain-English shift report using Claude."""
     if "nlp" not in _registry:
         raise HTTPException(
@@ -277,6 +291,13 @@ def generate_report(req: ReportRequest):
         drift_result   = req.drift_result,
         shift_id       = req.shift_id,
     )
+
+    # ── Persist to database ───────────────────────────────────────────────
+    try:
+        save_report(db, result, shift_id=req.shift_id)
+    except Exception as exc:
+        log.error(f"DB write failed (report still returned): {exc}")
+
     return result
 
 
@@ -331,3 +352,87 @@ def reload_models(background_tasks: BackgroundTasks):
     """Hot-reload all models from disk (e.g. after retraining)."""
     background_tasks.add_task(_load_engines)
     return {"message": "Model reload scheduled in background."}
+
+
+# ── Database query endpoints ───────────────────────────────────────────────
+
+@app.get("/history/predictions", tags=["history"])
+def list_predictions(limit: int = 50, db: Session = Depends(get_db)):
+    """
+    Return the N most recent shift predictions from the database.
+    Useful for building a history table in the dashboard.
+    """
+    records = get_recent_predictions(db, limit=limit)
+    return [
+        {
+            "id":                 r.id,
+            "created_at":         r.created_at.isoformat() if r.created_at else None,
+            "predicted_recovery": r.predicted_recovery,
+            "anomaly_label":      r.anomaly_label,
+            "anomaly_score":      r.anomaly_score,
+            "is_anomaly":         r.is_anomaly,
+            "drift_status":       r.drift_status,
+            "reagent_gain":       r.reagent_gain,
+            # Input summary
+            "head_grade":         r.head_grade,
+            "feed_rate":          r.feed_rate,
+            "ph":                 r.ph,
+            "sipx":               r.sipx,
+            "frother":            r.frother,
+        }
+        for r in records
+    ]
+
+
+@app.get("/history/predictions/{prediction_id}", tags=["history"])
+def get_prediction(prediction_id: int, db: Session = Depends(get_db)):
+    """Return full detail (including JSON engine payloads) for a single prediction."""
+    import json as _json
+    r = get_prediction_by_id(db, prediction_id)
+    if not r:
+        raise HTTPException(404, f"Prediction {prediction_id} not found")
+    return {
+        "id":                 r.id,
+        "created_at":         r.created_at.isoformat() if r.created_at else None,
+        "inputs": {
+            "head_grade":     r.head_grade,
+            "feed_rate":      r.feed_rate,
+            "ph":             r.ph,
+            "pulp_density":   r.pulp_density,
+            "air_flow":       r.air_flow,
+            "sipx":           r.sipx,
+            "frother":        r.frother,
+            "lime":           r.lime,
+            "depressant":     r.depressant,
+            "particle_size":  r.particle_size,
+            "water_recovery": r.water_recovery,
+            "rougher_grade":  r.rougher_grade,
+        },
+        "predicted_recovery": r.predicted_recovery,
+        "anomaly_label":      r.anomaly_label,
+        "anomaly_score":      r.anomaly_score,
+        "is_anomaly":         r.is_anomaly,
+        "drift_status":       r.drift_status,
+        "reagent_gain":       r.reagent_gain,
+        "shap":               _json.loads(r.shap_json)    if r.shap_json    else None,
+        "anomaly":            _json.loads(r.anomaly_json) if r.anomaly_json else None,
+        "reagent":            _json.loads(r.reagent_json) if r.reagent_json else None,
+        "drift":              _json.loads(r.drift_json)   if r.drift_json   else None,
+    }
+
+
+@app.get("/history/anomalies", tags=["history"])
+def list_anomalies(limit: int = 50, db: Session = Depends(get_db)):
+    """Return the N most recent shifts that were flagged as anomalies."""
+    records = get_anomaly_predictions(db, limit=limit)
+    return [
+        {
+            "id":                 r.id,
+            "created_at":         r.created_at.isoformat() if r.created_at else None,
+            "predicted_recovery": r.predicted_recovery,
+            "anomaly_label":      r.anomaly_label,
+            "anomaly_score":      r.anomaly_score,
+            "drift_status":       r.drift_status,
+        }
+        for r in records
+    ]
