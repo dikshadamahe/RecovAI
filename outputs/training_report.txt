@@ -1,0 +1,68 @@
+
+╔══════════════════════════════════════════════════════════════╗
+║          RecovAI — Training Report                          ║
+║          Generated: 2026-05-27 11:50:25                    ║
+╚══════════════════════════════════════════════════════════════╝
+
+DATASET
+  File          : data/processed/ML_Dataset_Copper_TARGET85.csv
+  Total rows    : 1,778
+  Features used : 26
+  Target        : Recovery (%)
+  Train rows    : 1,371
+  Test rows     : 407
+  Train period  : 2024-10-01 → 2025-12-31
+  Test period   : 2026-01-01  → 2026-05-16
+
+LEAKAGE COLUMNS EXCLUDED
+    - COPPER IN CONCENTRATE (MT)
+  - COPPER IN TAILINGS (MT)
+  - Concentrate Production (MT)
+  - COPPER IN HEAD (MT)
+  - TAILINGS (MT)
+
+MODEL PERFORMANCE
+  ┌──────────────────┬──────────┬──────────┬──────────┐
+  │ Model            │   R²     │   RMSE   │   MAE    │
+  ├──────────────────┼──────────┼──────────┼──────────┤
+  │ XGBoost          │  0.9720  │  0.1388  │  0.1042  │
+  │ Random Forest    │  0.9103  │  0.2483  │  0.1970  │
+  ├──────────────────┼──────────┼──────────┼──────────┤
+  │ TARGET           │  > 0.85  │  < 0.50  │  < 0.50  │
+  └──────────────────┴──────────┴──────────┴──────────┘
+
+TARGETS MET
+  XGBoost  R² > 0.85 : ✓ YES
+  XGBoost  MAE < 0.5 : ✓ YES
+  RF       R² > 0.85 : ✓ YES
+  RF       MAE < 0.5 : ✓ YES
+
+TOP 5 FEATURES (XGBoost)
+Feed_Condition_Num     0.598052
+Prev_Recovery (%)      0.104755
+Conc. Mass Pull (%)    0.056781
+Tails Grade (%Cu)      0.050109
+Roll7_Recovery (%)     0.045956
+
+TOP 5 FEATURES (Random Forest)
+Feed_Condition_Num     0.189291
+Tails Grade (%Cu)      0.148054
+Grinding kWh           0.125862
+Conc. Mass Pull (%)    0.089666
+Prev_Recovery (%)      0.084585
+
+OUTPUT FILES
+  models/xgboost_model.pkl
+  models/random_forest_model.pkl
+  plots/feature_importance.png
+  plots/predictions_vs_actual.png
+  plots/model_comparison.png
+  plots/timeseries_prediction.png
+
+NEXT STEPS
+  1. Load model: pickle.load(open('outputs/xgboost_model.pkl','rb'))
+  2. Predict:    model['model'].predict(new_shift_data[model['features']])
+  3. Build Reagent Dose Intelligence Engine
+  4. Add Isolation Forest anomaly detection
+  5. Add SHAP explainability
+  6. Deploy Streamlit dashboard
