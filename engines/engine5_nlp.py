@@ -45,26 +45,50 @@ Never use jargon without a brief explanation.
 Never make up data not provided to you."""
 
 
+import groq
+from typing import Dict, Optional
+import json
+from datetime import datetime
+
+
+SYSTEM_PROMPT = """You are a senior metallurgical process expert and AI assistant at a copper concentrator plant.
+Your role is to write concise, accurate shift performance reports for plant operators and metallurgists.
+
+Your reports must be:
+- 4–6 sentences, clearly structured
+- Written in plain English that any operator can understand
+- Factual — only state what the data shows
+- Actionable — always end with ONE specific recommended action
+- Alert-focused — flag anomalies and reagent mismatches clearly
+
+Tone: professional, direct, not alarming unless truly necessary.
+Never use jargon without a brief explanation.
+Never make up data not provided to you."""
+
+
 class ShiftReportGenerator:
     """
-    Generates natural-language shift reports using the Claude API.
+    Generates natural-language shift reports using the Groq API,
+    with a robust rule-based metallurgical expert system fallback.
     """
 
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model: str = "claude-sonnet-4-20250514",
+        model: str = "llama-3.1-8b-instant",
         max_tokens: int = 400,
     ):
-        key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-        if not key:
-            raise ValueError(
-                "No API key provided. Set ANTHROPIC_API_KEY env var "
-                "or pass api_key= to ShiftReportGenerator()."
-            )
-        self.client     = anthropic.Anthropic(api_key=key)
-        self.model      = model
+        key = api_key or os.environ.get("GROQ_API_KEY")
+        self.api_key = key
+        self.model = model
         self.max_tokens = max_tokens
+
+        self.client = None
+        if key:
+            try:
+                self.client = groq.Groq(api_key=key)
+            except Exception as e:
+                print(f"[Engine 5] Failed to initialize Groq client: {e}")
 
     # ── Main interface ────────────────────────────────────────────────────
 
@@ -79,49 +103,50 @@ class ShiftReportGenerator:
         shift_id:       Optional[str] = None,
     ) -> Dict:
         """
-        Generate a complete shift report.
-
-        Parameters
-        ----------
-        shift_data     : raw shift input dict (feature→value)
-        predicted_rec  : XGBoost predicted Cu recovery (%)
-        shap_result    : output from Engine 3 (ShapExplainer.explain_shift)
-        anomaly_result : output from Engine 2 (AnomalyDetector.score_shift)
-        reagent_result : output from Engine 1 (ReagentOptimizer.optimize)
-        drift_result   : output from Engine 4 (PSIMonitor.check or check_single)
-        shift_id       : optional shift identifier string
-
-        Returns
-        -------
-        dict with:
-            report        — str, the natural-language report
-            shift_id      — str
-            timestamp     — ISO UTC string
-            model         — which Claude model was used
-            prompt_tokens — int
-            output_tokens — int
+        Generate a complete shift report. Uses Groq Llama 3 if API key available,
+        otherwise falls back to an expert rule-based local generator.
         """
         prompt = self._build_prompt(
             shift_data, predicted_rec, shap_result,
             anomaly_result, reagent_result, drift_result, shift_id
         )
 
-        message = self.client.messages.create(
-            model=self.model,
-            max_tokens=self.max_tokens,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        report_text = ""
+        used_llm = False
+        prompt_tokens = 0
+        output_tokens = 0
 
-        report_text = message.content[0].text.strip()
+        if self.client:
+            try:
+                chat_completion = self.client.chat.completions.create(
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": prompt}
+                    ],
+                    model=self.model,
+                    max_tokens=self.max_tokens,
+                )
+                report_text = chat_completion.choices[0].message.content.strip()
+                used_llm = True
+                prompt_tokens = chat_completion.usage.prompt_tokens if hasattr(chat_completion, "usage") else 0
+                output_tokens = chat_completion.usage.completion_tokens if hasattr(chat_completion, "usage") else 0
+            except Exception as e:
+                print(f"[Engine 5] Groq API call failed: {e}. Falling back to rule-based generation.")
+
+        # Fallback if no client or call failed
+        if not report_text:
+            report_text = self._generate_fallback(
+                shift_data, predicted_rec, shap_result, anomaly_result, reagent_result, drift_result
+            )
 
         return {
             "report":        report_text,
             "shift_id":      shift_id or datetime.utcnow().strftime("%Y%m%d_%H%M"),
             "timestamp":     datetime.utcnow().isoformat(),
-            "model":         self.model,
-            "prompt_tokens": message.usage.input_tokens,
-            "output_tokens": message.usage.output_tokens,
+            "model":         self.model if used_llm else "Local Expert Fallback Engine",
+            "prompt_tokens": prompt_tokens,
+            "output_tokens": output_tokens,
+            "used_llm":      used_llm,
         }
 
     def generate_brief(
@@ -137,19 +162,94 @@ class ShiftReportGenerator:
         drivers_str = ", ".join(
             f"{f} ({'+' if v > 0 else ''}{v:.2f} pp)" for f, v in top_drivers[:3]
         )
-        prompt = (
-            f"Write a 2-sentence shift alert for plant operators.\n"
-            f"Recovery: {predicted_rec:.1f}%. "
-            f"Top drivers: {drivers_str}. "
-            f"Anomaly status: {anomaly_label}.\n"
-            f"Be direct. Mention one action."
-        )
-        msg = self.client.messages.create(
-            model=self.model,
-            max_tokens=120,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return msg.content[0].text.strip()
+
+        if self.client:
+            try:
+                prompt = (
+                    f"Write a 2-sentence shift alert for plant operators.\n"
+                    f"Recovery: {predicted_rec:.1f}%. "
+                    f"Top drivers: {drivers_str}. "
+                    f"Anomaly status: {anomaly_label}.\n"
+                    f"Be direct. Mention one action."
+                )
+                chat_completion = self.client.chat.completions.create(
+                    messages=[{"role": "user", "content": prompt}],
+                    model=self.model,
+                    max_tokens=120,
+                )
+                return chat_completion.choices[0].message.content.strip()
+            except Exception as e:
+                pass
+
+        # Rule-based brief fallback
+        s1 = f"Shift copper recovery is projected at {predicted_rec:.1f}% with anomaly status flagged as {anomaly_label}."
+        if top_drivers:
+            s2 = f"Primary recovery driver is {top_drivers[0][0]} ({top_drivers[0][1]:+.2f} pp). Recommend close monitoring of key setpoints."
+        else:
+            s2 = "Process parameters are within expected ranges. Maintain current operations."
+        return f"{s1} {s2}"
+
+    def _generate_fallback(
+        self,
+        shift_data: Dict[str, float],
+        predicted_rec: float,
+        shap_result: Dict,
+        anomaly_result: Dict,
+        reagent_result: Dict,
+        drift_result: Dict,
+    ) -> str:
+        """
+        Rule-based metallurgical expert system that mimics a real metallurgical report.
+        """
+        top3 = shap_result.get("top_3_drivers", [])
+        top_driver_str = f"{top3[0][0]} ({top3[0][1]:+.2f} pp)" if top3 else "process conditions"
+
+        anomaly_label = anomaly_result.get("label", "NORMAL")
+        anomaly_contributors = [f[0] for f in anomaly_result.get("top_contributors", [])]
+
+        gaps = reagent_result.get("gaps", {})
+        gain = reagent_result.get("recovery_gain", 0.0)
+        reagent_actions = [g["action"] for g in gaps.values() if g.get("label") != "Optimal"]
+
+        drift_status = drift_result.get("overall_status", "OK")
+        worst_psi = drift_result.get("worst_psi", 0.0)
+
+        # 1. Opening sentence
+        s1 = f"The flotation circuit achieved a projected copper recovery of {predicted_rec:.2f}%, driven against the historical baseline ({shap_result.get('base_value', 84.0):.2f}%) primarily by {top_driver_str}."
+
+        # 2. Anomaly assessment
+        if anomaly_label == "ANOMALY":
+            s2 = f"Severe process anomalies were detected during the shift (Isolation Forest Alert), showing significant deviations in {', '.join(anomaly_contributors[:2])}."
+        elif anomaly_label == "SUSPICIOUS":
+            s2 = f"Minor operational variance was flagged as suspicious, with deviations detected in {', '.join(anomaly_contributors[:2])}."
+        else:
+            s2 = "Process operations remained highly stable and well within standard operating envelopes, with no anomalies flagged."
+
+        # 3. Reagent analysis
+        if reagent_actions:
+            s3 = f"Response-surface optimization indicates a potential recovery improvement of +{gain:.2f}% if reagent additions are adjusted. Specifically, operators should {'; '.join(reagent_actions[:2])}."
+        else:
+            s3 = "Reagent addition schemes were highly optimized, matching target setpoints and showing negligible deviation from response-surface maxima."
+
+        # 4. Drift status
+        if drift_status in ("RED", "RETRAIN"):
+            s4 = f"Critical population stability index (PSI) drift has been detected (worst PSI = {worst_psi:.3f}), showing that current feed properties are statistically decoupled from the training dataset."
+        elif drift_status in ("AMBER", "MONITOR"):
+            s4 = f"Slight input feed property drift is observed (worst PSI = {worst_psi:.3f}), suggesting feed composition changes are starting to occur."
+        else:
+            s4 = "The input ore profile shows high statistical stability and is perfectly aligned with the training dataset baseline."
+
+        # 5. Recommended Action
+        if reagent_actions:
+            action = f"Optimize reagent setpoints immediately: {reagent_actions[0]}."
+        elif anomaly_label != "NORMAL":
+            action = f"Investigate root cause of sensor deviation in {anomaly_contributors[0]} to stabilize circuit performance."
+        elif drift_status in ("RED", "RETRAIN", "AMBER", "MONITOR"):
+            action = "Collect composite shift samples for laboratory grade verification and consider model retraining."
+        else:
+            action = "Maintain current stable flotation cell settings and continue baseline monitoring."
+
+        return f"{s1} {s2} {s3} {s4} Recommended Action: {action}"
 
     # ── Prompt construction ───────────────────────────────────────────────
 

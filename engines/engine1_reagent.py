@@ -19,41 +19,51 @@ from typing import Dict, Tuple, List
 import warnings
 warnings.filterwarnings("ignore")
 
-# ── Feature list must match training order exactly ───────────────────────────
 FEATURES = [
+    "Ore Milled (MT)",
     "Head Grade (%Cu)",
+    "COPPER IN HEAD (MT)",
     "Feed Rate (MT/h)",
+    "Grinding kWh",
+    "Lime Bags",
+    "T Reagent (cc)",
+    "Pine Oil (cc)",
     "Flotation pH",
-    "Pulp Density (%)",
-    "Air Flow Rate (m3/min)",
+    "Milling Running Hours",
     "SIPX Dose (g/t)",
     "Frother Dose (g/t)",
-    "Lime Dose (kg/t)",
     "Depressant Dose (g/t)",
-    "Feed Particle Size (P80 microns)",
-    "Water Recovery (%)",
-    "Rougher Conc Grade (%Cu)",
+    "Prev_Recovery (%)",
+    "Prev_Feed Rate (MT/h)",
+    "Prev_Head Grade (%Cu)",
+    "Prev_Flotation pH",
+    "Roll7_Recovery (%)",
+    "Roll7_Head Grade (%Cu)",
+    "Roll7_Feed Rate (MT/h)",
+    "Feed_Condition_Num",
+    "Shift_Num",
+    "Month",
+    "Day_of_Week",
 ]
 
 # Reagent features that the optimizer is free to vary
 REAGENT_FEATURES = [
     "SIPX Dose (g/t)",
     "Frother Dose (g/t)",
-    "Lime Dose (kg/t)",
     "Depressant Dose (g/t)",
 ]
 
 # Physical bounds for each reagent — (min, max)
 REAGENT_BOUNDS: Dict[str, Tuple[float, float]] = {
-    "SIPX Dose (g/t)":       (10.0,  80.0),
-    "Frother Dose (g/t)":    (5.0,   40.0),
-    "Lime Dose (kg/t)":      (0.5,   5.0),
-    "Depressant Dose (g/t)": (5.0,   50.0),
+    "SIPX Dose (g/t)":       (5.0,  35.0),
+    "Frother Dose (g/t)":    (3.0,   20.0),
+    "Depressant Dose (g/t)": (1.0,   12.0),
 }
 
 # Gap thresholds for traffic-light classification
 GAP_GREEN  = 10.0   # < 10 %  → Optimal
 GAP_AMBER  = 20.0   # 10–20 % → Review needed
+
 # > 20 % → Mismatch / recovery risk
 
 
