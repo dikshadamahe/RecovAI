@@ -61,7 +61,7 @@
 # SECTION 1 — IMPORTS & APP SETUP
 # ═══════════════════════════════════════════════════════════════════
 
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
@@ -71,6 +71,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import pandas as pd
 import numpy as np
+from sqlalchemy.orm import Session
+from database import init_db, get_db, save_prediction, get_recent_predictions, get_prediction_by_id
 
 app = FastAPI(
     title="HCL RecovAI Backend",
@@ -188,6 +190,7 @@ def generate_synthetic_dataset(n: int = 500) -> pd.DataFrame:
 async def startup():
     global xgb_model, rf_model, lin_model, scaler, iso_forest
     global df_shifts, engines_found
+    init_db()
 
     model_map = [
         ("xgb_model",  "xgb_model.pkl"),
@@ -550,7 +553,7 @@ async def api_test():
 
 # ── POST /predict ────────────────────────────────────────────────────
 @app.post("/predict")
-async def predict(req: PredictRequest):
+async def predict(req: PredictRequest, db: Session = Depends(get_db)):
     try:
         data = req.dict()
         data["rougher_grade"] = req.rougher_conc_grade or req.rougher_grade
@@ -569,15 +572,21 @@ async def predict(req: PredictRequest):
         except Exception:
             shap5 = mock_shap_top5(data)
 
-        return {
+        response = {
             "predicted_recovery": round(pred, 2),
             "ci_lower":           round(pred - ci_half, 2),
             "ci_upper":           round(pred + ci_half, 2),
             "model_used":         req.model,
             "anomaly_score":      anom_score,
             "anomaly_result":     anom_result,
+            "anomaly":            {"label": "NORMAL" if anom_result == "Normal" else "ANOMALY", "score": anom_score, "is_anomaly": anom_result != "Normal"},
+            "drift":              {"overall_status": "No Drift"},
+            "reagent":            {},
             "shap_top5":          shap5,
         }
+        db_record = save_prediction(db, data, response)
+        response["db_id"] = db_record.id
+        return response
     except Exception as exc:
         log.error(f"/predict error: {exc}")
         return JSONResponse(status_code=500, content={"error": str(exc)})
@@ -1275,6 +1284,62 @@ async def feedback(req: FeedbackRequest):
     except Exception as exc:
         log.error(f"/api/feedback error: {exc}")
         return JSONResponse(status_code=500, content={"error": str(exc)})
+
+
+# ── GET /history/predictions ─────────────────────────────────────────
+@app.get("/history/predictions")
+async def history_predictions(limit: int = Query(100), db: Session = Depends(get_db)):
+    rows = get_recent_predictions(db, limit=limit)
+    return [
+        {
+            "id":                 r.id,
+            "created_at":         r.created_at.isoformat() if r.created_at else None,
+            "head_grade":         r.head_grade,
+            "feed_rate":          r.feed_rate,
+            "ph":                 r.ph,
+            "sipx":               r.sipx,
+            "predicted_recovery": r.predicted_recovery,
+            "anomaly_label":      r.anomaly_label,
+            "anomaly_score":      r.anomaly_score,
+            "is_anomaly":         r.is_anomaly,
+            "drift_status":       r.drift_status,
+            "reagent_gain":       r.reagent_gain,
+        }
+        for r in rows
+    ]
+
+
+# ── GET /history/predictions/{id} ────────────────────────────────────
+@app.get("/history/predictions/{prediction_id}")
+async def history_prediction_detail(prediction_id: int, db: Session = Depends(get_db)):
+    r = get_prediction_by_id(db, prediction_id)
+    if not r:
+        raise HTTPException(404, f"Prediction #{prediction_id} not found")
+    return {
+        "id":                 r.id,
+        "created_at":         r.created_at.isoformat() if r.created_at else None,
+        "inputs": {
+            "head_grade":     r.head_grade,
+            "feed_rate":      r.feed_rate,
+            "ph":             r.ph,
+            "pulp_density":   r.pulp_density,
+            "air_flow":       r.air_flow,
+            "sipx":           r.sipx,
+            "frother":        r.frother,
+            "lime":           r.lime,
+            "depressant":     r.depressant,
+            "particle_size":  r.particle_size,
+            "water_recovery": r.water_recovery,
+            "rougher_grade":  r.rougher_grade,
+        },
+        "predicted_recovery": r.predicted_recovery,
+        "anomaly_label":      r.anomaly_label,
+        "anomaly_score":      r.anomaly_score,
+        "is_anomaly":         r.is_anomaly,
+        "drift_status":       r.drift_status,
+        "anomaly":            json.loads(r.anomaly_json) if r.anomaly_json else {},
+        "drift":              json.loads(r.drift_json)   if r.drift_json   else {},
+    }
 
 
 # ═══════════════════════════════════════════════════════════════════
