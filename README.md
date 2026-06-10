@@ -1,217 +1,371 @@
-# ⚙️ HCL Copper Recovery AI — RecovAI
+# 🔵 RecovAI — AI-Powered Decision Support System
+### Hindustan Copper Limited · Malanjkhand Copper Project
 
-Intelligent decision-support platform for copper flotation plant operations.
-Predicts shift recovery %, optimises reagent doses, flags anomalies, and generates AI-enhanced shift reports — all from a Streamlit dashboard powered by Groq (Llama 3).
+> An intelligent, full-stack decision support system for copper flotation plant optimization — combining XGBoost predictive modeling, real-time anomaly detection, SHAP explainability, PSI drift monitoring, and AI-generated shift reports.
+
+---
+
+## 📸 Project Screenshots
+
+> **Add your project screenshots here.** Replace the placeholders below with actual images.
+
+### Dashboard Overview
+
+
+
+### Prediction Interface
+
+
+### SHAP Explainability Panel
+
+
+
+### Anomaly Detection View
+
+
+
+### AI Shift Report
+
+
+
+### PSI Drift Monitor
+
+---
+
+## 📋 Table of Contents
+
+- [Project Overview](#-project-overview)
+- [Architecture](#-architecture)
+- [AI Engines](#-ai-engines)
+- [Model Performance](#-model-performance)
+- [Tech Stack](#-tech-stack)
+- [Project Structure](#-project-structure)
+- [Setup & Installation](#-setup--installation)
+- [Running the Application](#-running-the-application)
+- [API Endpoints](#-api-endpoints)
+- [Dataset](#-dataset)
+- [Team](#-team)
+
+---
+
+## 🧠 Project Overview
+
+**RecovAI** is an AI-powered decision support system built for **Hindustan Copper Limited (HCL)** targeting the **Malanjkhand Copper Project** flotation plant. The system predicts copper recovery rates, recommends optimal reagent dosages, detects operational anomalies, and generates plain-English shift performance reports — all in real time.
+
+### Problem Statement
+Copper flotation recovery is highly sensitive to process variables such as reagent dosage, feed grade, pulp density, and pH. Manual monitoring is error-prone and reactive. RecovAI addresses this by providing:
+- **Predictive insights** before a shift ends
+- **Automated root-cause analysis** via SHAP
+- **Early anomaly warnings** via Isolation Forest
+- **Data drift alerts** via PSI monitoring
+- **AI-generated shift reports** via Groq LLM (Llama 3)
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   Frontend (HTML/JS)                        │
+│              hcl_recovai_v3.html + shift_data.js            │
+└────────────────────────┬────────────────────────────────────┘
+                         │  HTTP / REST
+┌────────────────────────▼────────────────────────────────────┐
+│               FastAPI Backend  (main.py v2.0)               │
+│                    Port: 8000                                │
+├─────────────┬──────────┬──────────┬──────────┬─────────────┤
+│  Engine 1   │ Engine 2 │ Engine 3 │ Engine 4 │  Engine 5   │
+│  Reagent    │ Anomaly  │  SHAP    │   PSI    │   NLP       │
+│  Optimizer  │ Detector │ Explainer│ Monitor  │  Reporter   │
+├─────────────┴──────────┴──────────┴──────────┴─────────────┤
+│              ML Models  (/models/)                          │
+│   xgb_model.pkl  |  rf_model.pkl  |  iso_forest.pkl        │
+│   linear_model.pkl  |  scaler.pkl                          │
+├─────────────────────────────────────────────────────────────┤
+│              SQLite Database  (recovai.db)                  │
+│              SQLAlchemy ORM  (database.py)                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## ⚙️ AI Engines
+
+The system is powered by five independent, modular intelligence engines:
+
+### Engine 1 — Reagent Dose Intelligence (`engine1_reagent.py`)
+Uses **SciPy response-surface optimization** (`scipy.optimize.differential_evolution`) to find mathematically optimal reagent doses (SIPX, Frother, Lime, Depressant) for given feed conditions. Classifies the gap between actual and optimal plant usage.
+
+### Engine 2 — Anomaly Detection (`engine2_anomaly.py`)
+Trains an **Isolation Forest** on clean historical shift data to score every incoming shift for anomalousness — no labelled data required. Flags unusual operational conditions in real time.
+
+### Engine 3 — SHAP Explainability (`engine3_shap.py`)
+Provides per-prediction **SHAP decomposition** using `TreeExplainer`. Generates waterfall plots (single prediction) and beeswarm plots (global model behaviour). Returns structured driver data for the dashboard and NLP report.
+
+### Engine 4 — PSI Data Drift Monitor (`engine4_psi.py`)
+Computes **Population Stability Index (PSI)** for every feature to detect when live production data has drifted away from the training distribution.
+
+| PSI Value | Status | Action |
+|-----------|--------|--------|
+| < 0.10 | 🟢 No Change | Model safe to use |
+| 0.10 – 0.25 | 🟡 Slight Drift | Monitor closely |
+| > 0.25 | 🔴 Significant Drift | Consider retraining |
+
+### Engine 5 — NLP Shift Report Generator (`engine5_nlp.py`)
+Calls the **Groq API (Llama 3)** to generate concise, plain-English shift performance reports from structured engine outputs. Falls back to a rule-based expert system if the API is unavailable.
+
+---
+
+## 📊 Model Performance
+
+Trained on **1,778 shifts** of real copper plant data (Oct 2024 – May 2026), with an 80/20 temporal train-test split.
+
+| Model | R² Score | RMSE | MAE | Target Met |
+|-------|----------|------|-----|------------|
+| **XGBoost** | **0.9720** | 0.1388 | 0.1042 | ✅ Yes |
+| Random Forest | 0.9103 | 0.2483 | 0.1970 | ✅ Yes |
+| Target Threshold | > 0.85 | < 0.50 | < 0.50 | — |
+
+### Top 5 Features (XGBoost)
+| Feature | Importance |
+|---------|------------|
+| Feed_Condition_Num | 0.598 |
+| Prev_Recovery (%) | 0.105 |
+| Conc. Mass Pull (%) | 0.057 |
+| Tails Grade (%Cu) | 0.050 |
+| Roll7_Recovery (%) | 0.046 |
+
+> Leakage columns excluded from training: `COPPER IN CONCENTRATE (MT)`, `COPPER IN TAILINGS (MT)`, `Concentrate Production (MT)`, `COPPER IN HEAD (MT)`, `TAILINGS (MT)`.
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Backend Framework** | FastAPI 0.100+ |
+| **ASGI Server** | Uvicorn |
+| **Primary ML Model** | XGBoost 2.0+ |
+| **Ensemble Model** | Scikit-learn Random Forest |
+| **Anomaly Detection** | Scikit-learn Isolation Forest |
+| **Explainability** | SHAP (TreeExplainer) |
+| **Optimization** | SciPy (differential evolution) |
+| **LLM / NLP Reports** | Groq API (Llama 3) |
+| **Data Processing** | Pandas, NumPy |
+| **Database** | SQLite + SQLAlchemy ORM |
+| **Serialization** | Joblib, Pickle |
+| **Frontend** | Vanilla HTML/CSS/JS |
+| **Config** | Python-dotenv |
 
 ---
 
 ## 📁 Project Structure
 
 ```
-HCL-MCP-AI-project--main/
+HCL-MCP-AI-project-/
 │
-├── app.py                          ← Main Streamlit dashboard (run this)
-├── recovai_train.py                ← XGBoost training script
-├── recov_train_rf.py               ← Random Forest training script
-├── recov_train_linear.py           ← Linear model training script
-├── eda_analyisis.ipynb             ← Exploratory data analysis notebook
+├── main.py                        # FastAPI app — all endpoints (v2.0)
+├── database.py                    # SQLAlchemy ORM, DB init, CRUD helpers
 │
-├── ML_Dataset_Copper_TARGET85.csv  ← Main dataset (required)
+├── engines/                       # Modular AI engine package
+│   ├── __init__.py
+│   ├── engine1_reagent.py         # Reagent dose optimization
+│   ├── engine2_anomaly.py         # Isolation Forest anomaly detection
+│   ├── engine3_shap.py            # SHAP explainability
+│   ├── engine4_psi.py             # PSI data drift monitoring
+│   └── engine5_nlp.py             # Groq LLM shift report generation
 │
-├── recovai_output/                 ← Pre-trained models + plots (already included)
+├── models/                        # Trained model artifacts
+│   ├── xgb_model.pkl              # Primary XGBoost model
+│   ├── xgb_model.json             # XGBoost model (JSON format)
+│   ├── rf_model.pkl               # Random Forest model
+│   ├── linear_model.pkl           # Linear baseline model
+│   ├── scaler.pkl                 # Feature scaler
+│   └── iso_forest.pkl             # Isolation Forest for anomaly detection
+│
+├── recovai_output/                # Training artifacts & plots
 │   ├── model_recovery_xgb_clean.json
 │   ├── model_recovery_rf_clean.pkl
-│   ├── model_recovery_linear_clean.pkl
-│   └── *.png                       ← Feature importance / SHAP plots
+│   ├── isolation_forest.pkl
+│   ├── psi_monitor.pkl
+│   ├── plot_shap_recovery.png
+│   ├── xgb_clean_actual_vs_predicted.png
+│   └── ...
 │
-├── data/processed/                 ← Processed data files
-├── requirements.txt                ← Python dependencies
-└── .env                            ← Your API keys (you create this — see below)
+├── data/
+│   └── processed/
+│       ├── ML_Dataset_Copper_TARGET85.csv    # Primary training dataset
+│       └── ML_Implementation_Dataset_Copper.csv
+│
+├── outputs/                       # Generated charts & reports
+│   ├── feature_importance.png
+│   ├── model_comparison.png
+│   ├── predictions_vs_actual.png
+│   ├── timeseries_prediction.png
+│   └── training_report.txt
+│
+├── assets/                        # Frontend static assets
+│   ├── logo.png
+│   └── shift_data.js              # Shift data helper
+│
+├── hcl_recovai_v3.html            # Main frontend UI
+├── shifts_dataset.csv             # Live shifts dataset
+├── recovai.db                     # SQLite database
+│
+├── train_all.py                   # Master training script
+├── train_recov_ai.py              # RecovAI-specific training
+├── recov_train_rf.py              # Random Forest training
+├── recov_train_linear.py          # Linear model training
+├── train_extra_models.py          # Additional model experiments
+│
+├── requirements.txt               # Backend Python dependencies
+├── requirements_frontend.txt      # Frontend dependencies
+└── README.md                      # This file
 ```
 
 ---
 
-## 🖥️ Setup on a New PC — Step by Step
+## 🚀 Setup & Installation
 
-### Step 1 — Install Python
+### Prerequisites
+- Python 3.10+
+- pip
+- A **Groq API key** (for NLP shift reports) — get one at [console.groq.com](https://console.groq.com)
 
-Make sure Python 3.10 or higher is installed.
-
+### 1. Clone the Repository
 ```bash
-python --version
+git clone https://github.com/dikshadamahe/HCL-MCP-AI-project-.git
+cd HCL-MCP-AI-project-
 ```
 
-If not installed, download from [python.org](https://python.org) and install it.
-During installation on Windows, **tick "Add Python to PATH"**.
-
----
-
-### Step 2 — Extract the ZIP
-
-Extract the downloaded ZIP file anywhere you like, for example your Desktop.
-
+### 2. Create & Activate a Virtual Environment
 ```bash
-# On Mac/Linux you can also run:
-unzip HCL-MCP-AI-project--main.zip
-```
+python -m venv venv
 
-Then open a terminal and navigate into the folder:
+# Windows
+venv\Scripts\activate
 
-```bash
-cd HCL-MCP-AI-project--main
-```
-
-> **Windows users:** Open the folder in File Explorer, then right-click inside it → "Open in Terminal" or "Git Bash here".
-
----
-
-### Step 3 — Create a Virtual Environment
-
-A virtual environment keeps this project's packages separate from everything else on your PC.
-
-```bash
-python -m venv .venv
-```
-
-Now activate it:
-
-```bash
 # Mac / Linux
-source .venv/bin/activate
-
-# Windows (Command Prompt)
-.venv\Scripts\activate.bat
-
-# Windows (PowerShell)
-.venv\Scripts\Activate.ps1
+source venv/bin/activate
 ```
 
-You should see `(.venv)` appear at the start of your terminal line. That means it's active.
-
----
-
-### Step 4 — Install Dependencies
-
+### 3. Install Dependencies
 ```bash
 pip install -r requirements.txt
-pip install streamlit groq python-dotenv seaborn scipy
 ```
 
-This installs everything — XGBoost, scikit-learn, pandas, Streamlit, Groq, and more.
-It may take 2–3 minutes on first install.
+Core packages installed:
+```
+fastapi>=0.100.0       uvicorn[standard]>=0.20.0    pydantic>=2.0
+numpy>=1.26            pandas>=2.2                   scikit-learn>=1.3.0
+xgboost>=2.0.0         scipy>=1.11.0                 matplotlib>=3.7.0
+shap>=0.44.0           joblib>=1.3.0                 openpyxl>=3.1.0
+groq>=0.5.0            python-dotenv>=1.0.0
+```
 
----
-
-### Step 5 — Add Your Groq API Key
-
-The app uses Groq (free) for AI-enhanced shift reports and the "Ask the Plant" chat.
-
-1. Go to [console.groq.com](https://console.groq.com) and sign up (free)
-2. Click **API Keys** → **Create API Key** → copy it
-3. In the project folder, create a file called `.env`:
-
+### 4. Set Environment Variables
 ```bash
-# Mac/Linux
-touch .env
+# Windows
+set GROQ_API_KEY=gsk-your-key-here
 
-# Windows — just create a new text file named .env (no .txt extension)
+# Mac / Linux
+export GROQ_API_KEY=gsk-your-key-here
 ```
 
-Open `.env` in any text editor and add this line:
-
+Or create a `.env` file in the project root:
 ```
-GROQ_API_KEY=your_actual_key_here
+GROQ_API_KEY=gsk-your-key-here
 ```
 
-Save and close. The app reads this automatically on startup.
-
-> The AI features (shift report enhancement, Ask the Plant) need this key.
-> Everything else (predictor, optimizer, anomaly engine) works without it.
-
----
-
-### Step 6 — Run the App
-
+### 5. Train the Models (if not already trained)
 ```bash
-streamlit run app.py
+python train_all.py
 ```
 
-Your browser will open automatically at `http://localhost:8501`.
-
-If it doesn't open, manually go to that address in any browser.
+Trained model files will appear in `models/` and `recovai_output/`.
 
 ---
 
-## 🔄 Retrain the Models (Optional)
+## ▶️ Running the Application
 
-The `recovai_output/` folder already contains pre-trained models so you can skip this.
-If you have new data and want to retrain:
-
+### Start the Backend Server
 ```bash
-# Train all three models
-python recovai_train.py       # XGBoost
-python recov_train_rf.py      # Random Forest
-python recov_train_linear.py  # Linear
+uvicorn main:app --reload --port 8000
 ```
 
-Trained models and plots are saved automatically into `recovai_output/`.
+### Verify the Server is Running
+Open your browser and navigate to:
+```
+http://localhost:8000/api/test
+```
+All fields should show `true` / loaded counts.
+
+### Open the Frontend
+Open `hcl_recovai_v3.html` directly in your browser, or serve it via any static file server.
+
+### API Documentation (Swagger UI)
+```
+http://localhost:8000/docs
+```
 
 ---
 
-## 📊 App Modules
+## 🔌 API Endpoints
 
-| Module | What it does |
-|---|---|
-| 🏠 Home | Overview of all modules and loaded model status |
-| 🎯 Recovery Predictor | Predict next-shift recovery % with confidence interval |
-| 💊 Reagent Dose Optimizer | Find minimum-cost SIPX/Frother/Depressant doses for a target |
-| 🚨 Anomaly & Alert Engine | Flag unusual shifts using Isolation Forest |
-| 📊 Shift Performance Dashboard | Actual vs predicted recovery trends and monthly box plots |
-| 🔬 Feature Impact Explorer | Feature importance, correlation heatmap, partial dependence |
-| 📝 Shift Report Generator | Auto-generate formatted `.xlsx` shift report (+ AI summary via Groq) |
-| 💬 Ask the Plant | Natural language Q&A over shift history via Groq (Llama 3) |
-| 📈 Recovery Trend Forecaster | 7-day rolling recovery forecast from planned shift inputs |
-
----
-
-## ⚠️ Common Issues
-
-**`streamlit: command not found`**
-→ Your virtual environment is not activated. Run `source .venv/bin/activate` (Mac/Linux) or `.venv\Scripts\activate.bat` (Windows) first.
-
-**`ModuleNotFoundError: No module named 'groq'`**
-→ Run `pip install groq` inside your activated virtual environment.
-
-**`Dataset not found` error in the app**
-→ Make sure `ML_Dataset_Copper_TARGET85.csv` is in the root project folder (same level as `app.py`).
-
-**Models showing ❌ in sidebar**
-→ Check that the `recovai_output/` folder is present and contains the `.json` / `.pkl` model files.
-
-**Groq API call failed**
-→ Check your `.env` file has `GROQ_API_KEY=...` with no spaces around the `=`. Make sure the key is valid at [console.groq.com](https://console.groq.com).
-
-**PowerShell says "execution of scripts is disabled"**
-→ Run: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` then try activating again.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Health check |
+| `GET` | `/api/test` | System readiness check (models, DB, engines) |
+| `POST` | `/predict` | Predict copper recovery for a shift |
+| `POST` | `/optimize` | Get optimal reagent dose recommendations |
+| `GET` | `/api/anomalies` | Fetch anomaly scores for recent shifts |
+| `GET` | `/api/importance` | Feature importance data (SHAP + model) |
+| `GET` | `/api/heatmap` | Correlation heatmap data |
+| `GET` | `/api/pdp` | Partial dependence plot data |
+| `GET` | `/api/dashboard` | Aggregated dashboard metrics |
+| `POST` | `/report` | Generate AI shift report or chat response |
+| `GET` | `/api/report/download` | Download latest shift report |
+| `POST` | `/api/forecast` | Multi-shift forecast |
+| `POST` | `/api/contact` | Submit contact/feedback form |
+| `POST` | `/api/feedback` | Submit prediction feedback |
 
 ---
 
-## 🧰 Requirements Summary
+## 📂 Dataset
 
-| Requirement | Version |
-|---|---|
-| Python | 3.10+ |
-| Streamlit | latest |
-| XGBoost | ≥ 2.0.0 |
-| scikit-learn | ≥ 1.3.0 |
-| pandas | ≥ 2.0.0 |
-| Groq Python SDK | latest |
-| openpyxl | ≥ 3.1.0 |
+The system is trained on real copper flotation plant data from the **Malanjkhand Copper Project**.
+
+| Property | Value |
+|----------|-------|
+| Total Shifts | 1,778 |
+| Training Period | Oct 2024 – Dec 2025 |
+| Test Period | Jan 2026 – May 2026 |
+| Features | 26 process variables |
+| Target Variable | `Recovery (%)` |
+
+Key input features include: Ore Milled (MT), Head Grade (%Cu), Feed Rate (MT/h), Flotation pH, Grinding kWh, SIPX Dose, Frother Dose, Lime Bags, Depressant Dose, Pulp Density, Air Flow, Tails Grade, Conc. Mass Pull, and lagged/rolling statistics.
 
 ---
 
-## 👤 Project
+## 👥 Team
 
-HCL RecovAI — Copper Flotation Intelligence Platform
-Built for plant operators and shift managers.
-AI powered by Groq (Llama 3.3-70b).
+
+
+- Bhavya Jaiprakash Khatri
+- Diksha Damahe
+- Hiya Porwal
+- Ritica Awasthi
+
+**Institution:** VIT Bhopal University  
+**Client:** Hindustan Copper Limited (HCL)  
+**Project:** Malanjkhand Copper Project — Flotation Plant Optimization  
+
+---
+
+## 📄 License
+
+This project was developed as part of an academic industry collaboration. All rights reserved by the respective institution and client organization.
+
+---
+
+
