@@ -32,7 +32,7 @@ from typing import Dict, Any, Optional
 
 from sqlalchemy import (
     create_engine, Column, Integer, Float, String,
-    Text, DateTime, ForeignKey, Boolean
+    Text, DateTime, ForeignKey, Boolean, inspect, text
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
@@ -67,6 +67,13 @@ class ShiftPrediction(Base):
 
     id              = Column(Integer, primary_key=True, index=True)
     created_at      = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # ── Shift metadata (from submit form) ─────────────────────────────────
+    shift_date      = Column(String(20), nullable=True, index=True)   # YYYY-MM-DD
+    shift           = Column(String(20), nullable=True)                # Morning / Afternoon / Night
+    operator_name   = Column(String(100), nullable=True)
+    notes           = Column(Text, nullable=True)
+    actual_recovery = Column(Float, nullable=True)
 
     # ── Shift inputs ──────────────────────────────────────────────────────
     head_grade      = Column(Float, nullable=False)
@@ -146,9 +153,33 @@ class ShiftReport(Base):
 
 # ── Schema creation ───────────────────────────────────────────────────────────
 
+def _migrate_shift_metadata_columns() -> None:
+    """Add shift metadata columns to existing SQLite databases."""
+    if not DATABASE_URL.startswith("sqlite"):
+        return
+    insp = inspect(engine)
+    if "shift_predictions" not in insp.get_table_names():
+        return
+    existing = {c["name"] for c in insp.get_columns("shift_predictions")}
+    additions = [
+        ("shift_date", "VARCHAR(20)"),
+        ("shift", "VARCHAR(20)"),
+        ("operator_name", "VARCHAR(100)"),
+        ("notes", "TEXT"),
+        ("actual_recovery", "FLOAT"),
+    ]
+    with engine.begin() as conn:
+        for col, col_type in additions:
+            if col not in existing:
+                conn.execute(
+                    text(f"ALTER TABLE shift_predictions ADD COLUMN {col} {col_type}")
+                )
+
+
 def init_db() -> None:
     """Create all tables if they don't exist. Safe to call on every startup."""
     Base.metadata.create_all(bind=engine)
+    _migrate_shift_metadata_columns()
 
 
 # ── Dependency for FastAPI ────────────────────────────────────────────────────
@@ -211,7 +242,22 @@ def save_prediction(
     if opt_recovery is not None and pred_recovery is not None:
         reagent_gain = round(float(opt_recovery) - float(pred_recovery), 4)
 
+    actual = shift_input.get("actual_recovery")
+    if actual is not None and actual != "":
+        try:
+            actual = float(actual)
+        except (TypeError, ValueError):
+            actual = None
+    else:
+        actual = None
+
     record = ShiftPrediction(
+        shift_date      = shift_input.get("shift_date") or None,
+        shift           = shift_input.get("shift") or None,
+        operator_name   = shift_input.get("operator_name") or None,
+        notes           = shift_input.get("notes") or None,
+        actual_recovery = actual,
+
         # Inputs
         head_grade     = shift_input.get("head_grade"),
         feed_rate      = shift_input.get("feed_rate"),

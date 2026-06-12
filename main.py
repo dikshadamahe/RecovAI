@@ -24,7 +24,7 @@
   │            MANUAL STEPS REQUIRED BEFORE RUNNING               │
   ├────────────────────────────────────────────────────────────────┤
   │  1. pip install fastapi uvicorn scikit-learn xgboost pandas    │
-  │               numpy scipy openpyxl anthropic                   │
+  │               numpy scipy openpyxl groq                        │
   │               python-multipart joblib                          │
   │                                                                │
   │  2. Put engine files in same folder as main.py:                │
@@ -47,8 +47,8 @@
   │      rougher_grade, recovery, feed_condition)                  │
   │                                                                │
   │  5. Set environment variable:                                  │
-  │       Windows:   set ANTHROPIC_API_KEY=sk-ant-...              │
-  │       Mac/Linux: export ANTHROPIC_API_KEY=sk-ant-...           │
+  │       Windows:   set GROQ_API_KEY=gsk-...                      │
+  │       Mac/Linux: export GROQ_API_KEY=gsk-...                   │
   │                                                                │
   │  6. Run: uvicorn main:app --reload --port 8000                 │
   │                                                                │
@@ -72,7 +72,10 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 from sqlalchemy.orm import Session
+from dotenv import load_dotenv
 from database import init_db, get_db, save_prediction, get_recent_predictions, get_prediction_by_id
+
+load_dotenv()
 
 app = FastAPI(
     title="HCL RecovAI Backend",
@@ -96,7 +99,7 @@ log = logging.getLogger("recovai")
 
 MODELS_DIR = Path("models")
 DATA_FILE  = Path("shifts_dataset.csv")
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
 FEATURE_COLS = [
     'head_grade', 'feed_rate', 'ph', 'pulp_density', 'air_flow',
@@ -445,6 +448,11 @@ class PredictRequest(BaseModel):
     rougher_grade:      float = 18.0
     rougher_conc_grade: float = 18.0   # alias sent by frontend
     model:              str   = "xgb"
+    shift_date:         Optional[str] = None   # YYYY-MM-DD from submit form
+    shift:              Optional[str] = None   # Morning / Afternoon / Night
+    operator_name:      Optional[str] = None
+    notes:              Optional[str] = None
+    actual_recovery:    Optional[float] = None
 
 
 class OptimizeRequest(BaseModel):
@@ -514,7 +522,7 @@ async def health():
         "avg_recovery":  avg_recovery,
         "target":        85.0,
         "engines":       engines_found,
-        "api_key_set":   bool(ANTHROPIC_API_KEY),
+        "groq_api_key_set": bool(GROQ_API_KEY),
     }
 
 
@@ -534,7 +542,7 @@ async def api_test():
         "engine3_shap":    "engine3_shap"    in engines_found,
         "engine4_psi":     "engine4_psi"     in engines_found,
         "engine5_nlp":     "engine5_nlp"     in engines_found,
-        "anthropic_api_key_set": bool(ANTHROPIC_API_KEY),
+        "groq_api_key_set": bool(GROQ_API_KEY),
         "models_dir_exists":     MODELS_DIR.exists(),
         "data_file_exists":      DATA_FILE.exists(),
     }
@@ -823,39 +831,19 @@ async def report(req: ReportRequest):
     try:
         # ── CHAT MODE ──────────────────────────────────────────────
         if req.message is not None:
-            try:
-                import engine5_nlp
-                reply = engine5_nlp.chat(
-                    req.message, req.history or [],
-                    api_key=os.getenv("GROQ_API_KEY", ANTHROPIC_API_KEY)
-                )
-            except Exception:
-                if ANTHROPIC_API_KEY:
-                    try:
-                        import anthropic
-                        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-                        system = (
-                            "You are RecovAI, the plant intelligence assistant for "
-                            "Hindustan Copper Limited Malanjkhand Copper Project. "
-                            "Answer questions about copper flotation, shift recovery, "
-                            "reagents, and plant operations. Be concise and accurate."
-                        )
-                        msgs = (req.history or []) + [{"role": "user", "content": req.message}]
-                        resp = client.messages.create(
-                            model="claude-sonnet-4-20250514",
-                            max_tokens=500,
-                            system=system,
-                            messages=msgs[-8:],
-                        )
-                        reply = resp.content[0].text
-                    except Exception as ai_exc:
-                        log.error(f"Anthropic chat error: {ai_exc}")
-                        reply = f"AI service temporarily unavailable. Error: {ai_exc}"
-                else:
-                    reply = (
-                        "RecovAI is in demo mode. Set ANTHROPIC_API_KEY and restart "
-                        "the backend for live AI answers. Question received: " + req.message
+            reply = (
+                "RecovAI is in demo mode. Set GROQ_API_KEY in .env and restart "
+                "the backend for live AI answers. Question received: " + req.message
+            )
+            if GROQ_API_KEY:
+                try:
+                    import engine5_nlp
+                    reply = engine5_nlp.chat(
+                        req.message, req.history or [], api_key=GROQ_API_KEY
                     )
+                except Exception as ai_exc:
+                    log.error(f"Groq chat error: {ai_exc}")
+                    reply = f"AI service temporarily unavailable. Error: {ai_exc}"
             return {"response": reply}
 
         # ── SHIFT REPORT MODE ──────────────────────────────────────
@@ -923,26 +911,22 @@ async def report(req: ReportRequest):
             recs   = build_recommendations(row_data, float(rec), delta, anom_sev, psi_status)
             ai_text = None
 
-            if req.use_ai and ANTHROPIC_API_KEY:
+            if req.use_ai and GROQ_API_KEY:
                 try:
-                    import anthropic
-                    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-                    prompt = (
-                        f"Write a concise {req.view}-level metallurgical shift report "
-                        f"for Hindustan Copper Limited. Shift: {req.shift}. "
-                        f"Recovery: {rec}% (target 85%). "
-                        f"Head Grade: {row_data.get('head_grade')}%Cu. "
-                        f"SIPX: {row_data.get('sipx')} g/t. Anomaly: {anom_sev}. "
-                        f"Max 200 words. Professional tone."
+                    import engine5_nlp
+                    gen = engine5_nlp.ShiftReportGenerator(api_key=GROQ_API_KEY)
+                    result = gen.generate(
+                        shift_data=row_data,
+                        predicted_rec=float(pred),
+                        shap_result={},
+                        anomaly_result={"label": anom_sev, "score": anom_score},
+                        reagent_result={},
+                        drift_result={"status": psi_status},
+                        shift_id=req.shift,
                     )
-                    resp = client.messages.create(
-                        model="claude-sonnet-4-20250514",
-                        max_tokens=300,
-                        messages=[{"role": "user", "content": prompt}],
-                    )
-                    ai_text = resp.content[0].text
+                    ai_text = result.get("report")
                 except Exception as ai_exc:
-                    log.error(f"Anthropic report error: {ai_exc}")
+                    log.error(f"Groq report error: {ai_exc}")
                     ai_text = f"AI narrative unavailable: {ai_exc}"
 
             status = (
@@ -1294,6 +1278,9 @@ async def history_predictions(limit: int = Query(100), db: Session = Depends(get
         {
             "id":                 r.id,
             "created_at":         r.created_at.isoformat() if r.created_at else None,
+            "shift_date":         r.shift_date,
+            "shift":              r.shift,
+            "operator_name":      r.operator_name,
             "head_grade":         r.head_grade,
             "feed_rate":          r.feed_rate,
             "ph":                 r.ph,
@@ -1318,6 +1305,11 @@ async def history_prediction_detail(prediction_id: int, db: Session = Depends(ge
     return {
         "id":                 r.id,
         "created_at":         r.created_at.isoformat() if r.created_at else None,
+        "shift_date":         r.shift_date,
+        "shift":              r.shift,
+        "operator_name":      r.operator_name,
+        "notes":              r.notes,
+        "actual_recovery":    r.actual_recovery,
         "inputs": {
             "head_grade":     r.head_grade,
             "feed_rate":      r.feed_rate,
