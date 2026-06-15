@@ -227,7 +227,7 @@ table.hcl tbody tr:hover{background:#F5E6D0}
   </div>
   <div class="azadi-badge" style="display:flex;align-items:center;gap:24px;margin:0 auto">
     <img src="assets/independance.png" alt="Azadi Ka Amrit Mahotsav" style="width:120px;border:none"/>
-    <img src="assets/betibachaobetipadhao.png"alt="Beti Bachao Beti Padhao" style="width:80px;border:none"/>
+    <img src="assets/betibachaobetipadhao.png" alt="Beti Bachao Beti Padhao" style="width:80px;border:none"/>
   </div>
   <div class="header-links">
     <a href="#" onclick="showPage('career');return false" data-i18n="lnk_career">Career</a>
@@ -1126,7 +1126,7 @@ table.hcl tbody tr:hover{background:#F5E6D0}
         <li><a href="https://www.hindustancopper.com" target="_blank">HCL Official Site</a></li>
         <li><a href="#">Plant Operations Portal</a></li>
         <li><a href="#">Safety &amp; HSE Portal</a></li>
-        <li><a href="http://localhost:8000/docs" target="_blank" rel="noopener noreferrer">RecovAI Documentation (Swagger)</a></li>
+        <li><a id="swaggerDocsLink" href="/docs" target="_blank" rel="noopener noreferrer">RecovAI Documentation (Swagger)</a></li>
       </ul>
     </div>
     <div class="footer-col" style="text-align:right">
@@ -1231,8 +1231,14 @@ function switchTab(btn,panelId){
 
 /* ═══════════════════════════════════════════════════════
    CONFIGURATION — Backend API (Groq key lives in server .env)
+   Deployed: same origin. Local static server (port 5500): localhost:8000.
 ═══════════════════════════════════════════════════════ */
-const API='http://localhost:8000';
+const LOCAL_API = 'http://localhost:8000';
+const API = window.location.port === '5500'
+  ? LOCAL_API
+  : (window.location.origin || LOCAL_API);
+const swaggerLink = document.getElementById('swaggerDocsLink');
+if (swaggerLink) swaggerLink.href = API + '/docs';
 
 async function checkGroqStatus(){
   const status=document.getElementById('keyStatus');

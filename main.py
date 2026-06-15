@@ -64,6 +64,7 @@
 from fastapi import FastAPI, Query, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from typing import Optional, List
 import os, json, logging, uuid, random, math, joblib
@@ -1332,6 +1333,23 @@ async def history_prediction_detail(prediction_id: int, db: Session = Depends(ge
         "anomaly":            json.loads(r.anomaly_json) if r.anomaly_json else {},
         "drift":              json.loads(r.drift_json)   if r.drift_json   else {},
     }
+
+
+# ═══════════════════════════════════════════════════════════════════
+# SECTION — UI (single-origin deploy: Render, VPS, etc.)
+# ═══════════════════════════════════════════════════════════════════
+
+@app.get("/")
+def serve_ui():
+    html_path = Path("hcl_recovai_v3.html")
+    if not html_path.is_file():
+        raise HTTPException(status_code=404, detail="UI file not found")
+    return FileResponse(html_path)
+
+
+_assets_dir = Path("assets")
+if _assets_dir.is_dir():
+    app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets")
 
 
 # ═══════════════════════════════════════════════════════════════════
