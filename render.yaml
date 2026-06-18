@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: recovai-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: recovai-db
+          property: connectionString
+      - key: GROQ_API_KEY
+        sync: false
+
+databases:
+  - name: recovai-db
+    plan: free
+    postgresMajorVersion: 15
