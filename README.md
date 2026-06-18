@@ -41,6 +41,17 @@ Copper flotation recovery depends on many interacting variables: head grade, fee
 The web UI is a single-page application (`hcl_recovai_v3.html`). The API layer is FastAPI; persistence uses SQLite through SQLAlchemy.
 
 ---
+## Dataset Collection and Preprocessing
+
+The dataset used in this project was collected from handwritten shift logs of the HCL MCP concentrator plant, which were originally maintained as pen-and-paper records. Since the logs followed a structured operational format, only minimal preprocessing was required. This included:
+
+- Digitization of handwritten shift log records into machine-readable format  
+- Date, numerical value, and format standardization  
+- Handling missing or inconsistent entries where required  
+- Organizing and structuring features for model training  
+- Converting processed data into a format suitable for machine learning and system integration  
+
+This approach ensured that the original operational characteristics of the plant data were preserved while preparing the dataset for analysis and AI model development.
 
 ## Screenshots
 
@@ -400,10 +411,10 @@ History in the UI uses `GET /history/predictions`, which returns both **shift da
 
 | Name | Role |
 |------|------|
-| Diksha Damahe | Frontend UI, FastAPI backend, ML model training, and full-stack integration |
-| Bhavya Jaiprakash Khatri | Project documentation, technical report, and submission materials |
-| Hiya Porwal | Dataset preparation — cleaning, transformation, and supporting data work for training and dashboards |
-| Ritica Awasthi | Database layer — SQLite integration |
+| Diksha Damahe | Frontend UI development, FastAPI backend implementation, integrated ML models into the system, image-based dataset generation, and full-stack system integration(connecting frontend, backend, database, and AI modules), Authored project documentation, including the GitHub README, installation guide, and usage instructions,SQLite integation  |
+| Bhavya Jaiprakash Khatri | Made project report|
+| Hiya Porwal | Data manipulation — cleaning, transformation|
+| Ritica Awasthi | Database layer — SQLite integation |
 
 ---
 
