@@ -27,18 +27,30 @@ import warnings
 warnings.filterwarnings("ignore")
 
 FEATURES = [
+    "Ore Milled (MT)",
     "Head Grade (%Cu)",
+    "COPPER IN HEAD (MT)",
     "Feed Rate (MT/h)",
+    "Grinding kWh",
+    "Lime Bags",
+    "T Reagent (cc)",
+    "Pine Oil (cc)",
     "Flotation pH",
-    "Pulp Density (%)",
-    "Air Flow Rate (m3/min)",
+    "Milling Running Hours",
     "SIPX Dose (g/t)",
     "Frother Dose (g/t)",
-    "Lime Dose (kg/t)",
     "Depressant Dose (g/t)",
-    "Feed Particle Size (P80 microns)",
-    "Water Recovery (%)",
-    "Rougher Conc Grade (%Cu)",
+    "Prev_Recovery (%)",
+    "Prev_Feed Rate (MT/h)",
+    "Prev_Head Grade (%Cu)",
+    "Prev_Flotation pH",
+    "Roll7_Recovery (%)",
+    "Roll7_Head Grade (%Cu)",
+    "Roll7_Feed Rate (MT/h)",
+    "Feed_Condition_Num",
+    "Shift_Num",
+    "Month",
+    "Day_of_Week",
 ]
 
 # Colours that match the dashboard palette

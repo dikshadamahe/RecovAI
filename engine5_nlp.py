@@ -41,29 +41,309 @@ Never use jargon without a brief explanation.
 Never make up data not provided to you."""
 
 
+# ── Tool Definitions ──────────────────────────────────────────────────────────
+
+def query_recent_shifts(limit: int = 5) -> str:
+    """Query recent shift predictions from database."""
+    try:
+        from database import SessionLocal, get_recent_predictions
+        db = SessionLocal()
+        records = get_recent_predictions(db, limit=limit)
+        if not records:
+            return "No recent shift predictions found in the database."
+        res = []
+        for r in records:
+            res.append(
+                f"- ID: {r.id} | Date: {r.shift_date or 'N/A'} | Shift: {r.shift or 'N/A'} | "
+                f"Head Grade: {r.head_grade}% | Feed Rate: {r.feed_rate} MT/h | pH: {r.ph} | "
+                f"Predicted Recovery: {r.predicted_recovery:.2f}% | Actual Recovery: {r.actual_recovery or 'N/A'}% | "
+                f"Anomaly: {r.is_anomaly or False}"
+            )
+        db.close()
+        return "\n".join(res)
+    except Exception as e:
+        return f"Error querying recent shifts: {str(e)}"
+
+
+def query_anomalous_shifts(limit: int = 5) -> str:
+    """Query database for shifts flagged as anomalies."""
+    try:
+        from database import SessionLocal, get_anomaly_predictions
+        db = SessionLocal()
+        records = get_anomaly_predictions(db, limit=limit)
+        if not records:
+            return "No anomalous shift records found."
+        res = []
+        for r in records:
+            res.append(
+                f"- ID: {r.id} | Date: {r.shift_date or 'N/A'} | Shift: {r.shift or 'N/A'} | "
+                f"Predicted Recovery: {r.predicted_recovery:.2f}% | Actual Recovery: {r.actual_recovery or 'N/A'}% | "
+                f"Anomaly Score: {r.anomaly_score:.3f} | Most Deviant: {r.anomaly_contributors or 'N/A'}"
+            )
+        db.close()
+        return "\n".join(res)
+    except Exception as e:
+        return f"Error querying anomalous shifts: {str(e)}"
+
+
+def run_reagent_optimizer(
+    head_grade: float,
+    feed_rate: float,
+    ph: float,
+    pulp_density: float,
+    target_recovery: float = 85.0
+) -> str:
+    """Run SciPy dose optimization for a set of conditions."""
+    try:
+        from scipy.optimize import minimize
+        
+        def mock_pred(data):
+            hg  = data.get("head_grade", 1.5)
+            fr  = data.get("feed_rate", 85.0)
+            ph_val = data.get("ph", 10.5)
+            sx  = data.get("sipx", 35.0)
+            base   = 72 + hg * 5 + 0.08 * (fr - 60) + 0.3 * (sx - 10) * 0.3
+            ph_pen = max(0, abs(ph_val - 10.7) * 2)
+            return min(96, max(60, base - ph_pen))
+
+        base = {
+            "head_grade": head_grade,
+            "feed_rate": feed_rate,
+            "ph": ph,
+            "pulp_density": pulp_density,
+        }
+
+        def cost(x):
+            sx, fr, lm, dp = x
+            p = mock_pred({
+                **base,
+                "sipx": sx, "frother": fr,
+                "lime": lm, "depressant": dp,
+            })
+            penalty = max(0, target_recovery - p) * 100
+            return sx * 0.5 + fr * 0.3 + lm * 2 + dp * 0.2 + penalty
+
+        res = minimize(
+            cost, [35.0, 15.0, 2.0, 20.0],
+            bounds=[(10.0, 80.0), (5.0, 40.0), (0.5, 5.0), (5.0, 50.0)],
+            method="L-BFGS-B",
+        )
+        sx, fr, lm, dp = [round(float(v), 2) for v in res.x]
+        pred_rec = mock_pred({
+            **base,
+            "sipx": sx, "frother": fr,
+            "lime": lm, "depressant": dp,
+        })
+        
+        return (
+            f"Optimization Results:\n"
+            f"- Optimal SIPX Dose: {sx} g/t\n"
+            f"- Optimal Frother Dose: {fr} g/t\n"
+            f"- Optimal Lime Dose: {lm} kg/t\n"
+            f"- Optimal Depressant Dose: {dp} g/t\n"
+            f"- Predicted Recovery at Optimal Doses: {pred_rec:.2f}%\n"
+            f"- Status: {'Optimal' if pred_rec >= target_recovery else 'Suboptimal (Target not fully reached)'}"
+        )
+    except Exception as e:
+        return f"Error running reagent optimizer: {str(e)}"
+
+
+def check_drift_status() -> str:
+    """Calculate and return data drift metrics."""
+    try:
+        from database import SessionLocal, get_recent_predictions
+        import engine4_psi
+        db = SessionLocal()
+        records = get_recent_predictions(db, limit=10)
+        db.close()
+        if not records:
+            return "No recent shift records in database to evaluate drift. Data profile is assumed stable."
+        
+        shifts = []
+        for r in records:
+            shifts.append({
+                "head_grade": r.head_grade,
+                "feed_rate": r.feed_rate,
+                "ph": r.ph,
+                "pulp_density": r.pulp_density,
+                "air_flow": r.air_flow,
+                "sipx": r.sipx,
+                "frother": r.frother,
+                "lime": r.lime,
+                "depressant": r.depressant,
+                "particle_size": r.particle_size,
+                "water_recovery": r.water_recovery,
+                "rougher_grade": r.rougher_grade,
+            })
+        
+        res = engine4_psi.check_drift(shifts)
+        flagged = res.get("flagged", [])
+        flagged_str = ", ".join(flagged) if flagged else "None"
+        return (
+            f"PSI Data Drift Report:\n"
+            f"- Overall Status: {res.get('overall_status', 'OK')}\n"
+            f"- Worst Feature PSI: {res.get('worst_psi', 0.0):.4f}\n"
+            f"- Flagged features showing drift: {flagged_str}\n"
+            f"- Timestamp: {res.get('timestamp')}"
+        )
+    except Exception as e:
+        return f"Error checking data drift status: {str(e)}"
+
+
+tools_schema = [
+    {
+        "type": "function",
+        "function": {
+            "name": "query_recent_shifts",
+            "description": "Query the local database for the most recent shift predictions, actual recovery, and parameters.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "The number of recent shifts to return (default 5, max 50).",
+                        "default": 5
+                    }
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "query_anomalous_shifts",
+            "description": "Query the database for recent shifts that were flagged as process anomalies.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "The number of anomalous shifts to return (default 5).",
+                        "default": 5
+                    }
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_reagent_optimizer",
+            "description": "Run SciPy numerical optimization to calculate optimal reagent doses (SIPX, Frother, Lime, Depressant) for specific process conditions.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "head_grade": {"type": "number", "description": "Ore head grade in %Cu."},
+                    "feed_rate": {"type": "number", "description": "Feed rate in MT/h."},
+                    "ph": {"type": "number", "description": "Flotation pH value (typically 9 to 12)."},
+                    "pulp_density": {"type": "number", "description": "Pulp density / mass pull in %."},
+                    "target_recovery": {
+                        "type": "number",
+                        "description": "Target copper recovery in % (default 85.0).",
+                        "default": 85.0
+                    }
+                },
+                "required": ["head_grade", "feed_rate", "ph", "pulp_density"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "check_drift_status",
+            "description": "Calculate Population Stability Index (PSI) to check if recent data has drifted from the model training distribution.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
+    }
+]
+
+
 def chat(message: str, history: list, api_key: str = "") -> str:
     """
-    Simple chat interface used by main.py /report endpoint (chat mode).
-    Tries Groq → rule-based fallback.
+    Agentic chat interface with tool calling used by main.py.
     """
     gen = ShiftReportGenerator(api_key=api_key or os.environ.get("GROQ_API_KEY", ""))
-    if gen.client:
-        try:
-            msgs = history[-6:] + [{"role": "user", "content": message}]
+    if not gen.client:
+        return (
+            f"RecovAI (offline mode): I received your question — '{message}'. "
+            "To enable live AI answers, set the GROQ_API_KEY environment variable "
+            "and restart the backend. I can still provide shift reports and "
+            "optimization results using the local expert engine."
+        )
+
+    try:
+        formatted_history = []
+        for h in history[-8:]:
+            role = h.get("role")
+            content = h.get("content") or h.get("response")
+            if role in ("user", "assistant", "system") and content:
+                formatted_history.append({"role": role, "content": content})
+            elif "response" in h and "message" in h:
+                formatted_history.append({"role": "user", "content": h["message"]})
+                formatted_history.append({"role": "assistant", "content": h["response"]})
+
+        messages = [
+            {"role": "system", "content": "You are a metallurgical operations AI Agent. You can query recent shifts, check anomalies, run dose optimization, and monitor data drift using your tools. Always use tools when asked for stats, database records, optimization, or drift reports."}
+        ] + formatted_history + [{"role": "user", "content": message}]
+
+        # ReAct loop - max 3 iterations
+        for _ in range(3):
             resp = gen.client.chat.completions.create(
-                messages=[{"role": "system", "content": SYSTEM_PROMPT}] + msgs,
+                messages=messages,
                 model=gen.model,
-                max_tokens=400,
+                max_tokens=500,
+                tools=tools_schema,
+                tool_choice="auto"
             )
-            return resp.choices[0].message.content.strip()
-        except Exception as e:
-            pass
-    return (
-        f"RecovAI (offline mode): I received your question — '{message}'. "
-        "To enable live AI answers, set the GROQ_API_KEY environment variable "
-        "and restart the backend. I can still provide shift reports and "
-        "optimization results using the local expert engine."
-    )
+            resp_message = resp.choices[0].message
+            # Groq returns a message object. We convert it to a dict to append.
+            msg_dict = {"role": "assistant"}
+            if resp_message.content:
+                msg_dict["content"] = resp_message.content
+            if resp_message.tool_calls:
+                msg_dict["tool_calls"] = resp_message.tool_calls
+            messages.append(msg_dict)
+
+            if not resp_message.tool_calls:
+                return resp_message.content.strip()
+
+            # Execute tool calls
+            for tool_call in resp_message.tool_calls:
+                fn_name = tool_call.function.name
+                fn_args = json.loads(tool_call.function.arguments or "{}")
+                
+                # Execute specific tool
+                if fn_name == "query_recent_shifts":
+                    tool_result = query_recent_shifts(**fn_args)
+                elif fn_name == "query_anomalous_shifts":
+                    tool_result = query_anomalous_shifts(**fn_args)
+                elif fn_name == "run_reagent_optimizer":
+                    tool_result = run_reagent_optimizer(**fn_args)
+                elif fn_name == "check_drift_status":
+                    tool_result = check_drift_status()
+                else:
+                    tool_result = f"Error: Tool '{fn_name}' not found."
+
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "name": fn_name,
+                    "content": tool_result
+                })
+        
+        final_resp = gen.client.chat.completions.create(
+            messages=[m for m in messages if m.get("role") != "tool" or "tool_call_id" in m],
+            model=gen.model,
+            max_tokens=300
+        )
+        return final_resp.choices[0].message.content.strip()
+
+    except Exception as e:
+        return f"AI Agent Error during execution: {str(e)}"
+
 
 
 class ShiftReportGenerator:

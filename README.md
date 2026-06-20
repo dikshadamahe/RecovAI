@@ -4,7 +4,14 @@
 
 Hindustan Copper Limited · Malanjkhand Copper Project
 
-RecovAI is a full-stack application that helps plant operators and metallurgists predict copper recovery, tune reagent dosing, detect unusual shifts, monitor model drift, and review shift performance. It combines machine learning models with explainability tools and an optional natural-language assistant backed by Groq (Llama 3).
+RecovAI is a full-stack application that helps plant operators and metallurgists predict copper recovery, tune reagent dosing, detect unusual shifts, monitor model drift, and review shift performance. It combines machine learning models with explainability tools and an agentic natural-language assistant backed by Groq (Llama 3).
+
+---
+
+## Live Deployment
+- **Live Demo (on Render)**: [https://recovai-xys2.onrender.com](https://recovai-xys2.onrender.com)
+- **Database**: Managed PostgreSQL Database (Render)
+- **Chatbot / NLP**: Agentic ReAct Tool-Calling Loop
 
 ---
 
@@ -106,7 +113,7 @@ flowchart TB
         E2["Engine 2\nAnomaly detector"]
         E3["Engine 3\nSHAP explainer"]
         E4["Engine 4\nPSI monitor"]
-        E5["Engine 5\nNLP / Groq"]
+        E5["Engine 5\nAgentic Chatbot (NLP)"]
     end
 
     subgraph ML["Model artifacts — models/"]
@@ -118,7 +125,8 @@ flowchart TB
     end
 
   subgraph Store["Persistence"]
-        SQLite[("recovai.db\nSQLite")]
+        Postgres[("recovai (PostgreSQL - Live)")]
+        SQLite[("recovai.db (SQLite - Local)")]
         CSV["shifts_dataset.csv"]
     end
 
@@ -126,9 +134,10 @@ flowchart TB
     Main --> E1 & E2 & E3 & E4 & E5
     Main --> XGB & RF & LIN & ISO & SCL
     Main --> DBLayer
-    DBLayer --> SQLite
+    DBLayer --> SQLite & Postgres
     Main --> CSV
     UI --> Assets
+    E5 -->|Tool Calling| SQLite & Postgres & E1 & E4
 ```
 
 ---
@@ -198,9 +207,14 @@ An **Isolation Forest** trained on historical shifts assigns an anomaly score to
 | 0.10 – 0.25 | Moderate drift | Monitor; plan validation |
 | &gt; 0.25 | Strong drift | Consider retraining or recalibration |
 
-### Engine 5 — NLP (Groq)
+### Engine 5 — Agentic Chatbot (Groq)
 
-When `GROQ_API_KEY` is present in `.env`, Engine 5 calls **Groq** (`llama-3.1-8b-instant` by default) for shift narratives and chat. If the key is missing or the call fails, the backend returns a structured rule-based response so the UI remains usable.
+When `GROQ_API_KEY` is present in the environment/`.env`, Engine 5 runs a **ReAct-style Tool-Calling Agent Loop** utilizing Groq (`llama-3.1-8b-instant`). Rather than executing a simple single prompt, the AI Agent dynamically invokes local Python tools to:
+- Retrieve recent shift prediction history and anomalous records from the PostgreSQL/SQLite database.
+- Execute the SciPy reagent optimization engine.
+- Calculate Population Stability Index (PSI) for real-time drift analysis.
+
+If the API key is missing or the call fails, the chat falls back to local expert system rule-based responses.
 
 ---
 
@@ -393,7 +407,7 @@ Interactive documentation: http://localhost:8000/docs
 
 ## Database
 
-SQLite database file: `recovai.db` (created on first backend start).
+Supports both local **SQLite** (`recovai.db`) and production-grade **PostgreSQL** (configured via `DATABASE_URL` environment variable).
 
 | Table | Purpose |
 |-------|---------|

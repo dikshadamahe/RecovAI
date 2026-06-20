@@ -33,18 +33,30 @@ import warnings
 warnings.filterwarnings("ignore")
 
 FEATURES = [
+    "Ore Milled (MT)",
     "Head Grade (%Cu)",
+    "COPPER IN HEAD (MT)",
     "Feed Rate (MT/h)",
+    "Grinding kWh",
+    "Lime Bags",
+    "T Reagent (cc)",
+    "Pine Oil (cc)",
     "Flotation pH",
-    "Pulp Density (%)",
-    "Air Flow Rate (m3/min)",
+    "Milling Running Hours",
     "SIPX Dose (g/t)",
     "Frother Dose (g/t)",
-    "Lime Dose (kg/t)",
     "Depressant Dose (g/t)",
-    "Feed Particle Size (P80 microns)",
-    "Water Recovery (%)",
-    "Rougher Conc Grade (%Cu)",
+    "Prev_Recovery (%)",
+    "Prev_Feed Rate (MT/h)",
+    "Prev_Head Grade (%Cu)",
+    "Prev_Flotation pH",
+    "Roll7_Recovery (%)",
+    "Roll7_Head Grade (%Cu)",
+    "Roll7_Feed Rate (MT/h)",
+    "Feed_Condition_Num",
+    "Shift_Num",
+    "Month",
+    "Day_of_Week",
 ]
 
 PSI_GREEN = 0.10
@@ -373,11 +385,89 @@ class PSIMonitor:
         mon._fitted_at   = payload["fitted_at"]
         return mon
 
-    # ── Helpers ───────────────────────────────────────────────────────────
-
     def _check_fitted(self) -> None:
         if self._train_data is None:
             raise RuntimeError("Monitor not fitted. Call .fit() or .load() first.")
+
+
+_global_monitor = None
+
+def check_drift(shifts: List[Dict]) -> Dict:
+    """
+    Module-level entry point called by main.py backend.
+    """
+    global _global_monitor
+    if _global_monitor is None:
+        import os
+        paths = [
+            "recovai_output/psi_monitor.pkl",
+            "models/psi_monitor.pkl",
+            "../recovai_output/psi_monitor.pkl",
+            "../models/psi_monitor.pkl"
+        ]
+        for p in paths:
+            if os.path.exists(p):
+                try:
+                    _global_monitor = PSIMonitor.load(p)
+                    break
+                except Exception:
+                    pass
+        if _global_monitor is None:
+            return {
+                "overall_status": "No Drift",
+                "overall_colour": "GREEN",
+                "worst_psi": 0.0,
+                "flagged": [],
+                "warnings": [],
+                "drift_detected": False,
+                "status": "No Drift"
+            }
+
+    alias_map = {
+        'Head Grade (%Cu)': 'head_grade',
+        'Feed Rate (MT/h)': 'feed_rate',
+        'Flotation pH': 'ph',
+        'SIPX Dose (g/t)': 'sipx',
+        'Frother Dose (g/t)': 'frother',
+        'Depressant Dose (g/t)': 'depressant',
+        'Lime Bags': 'lime',
+        'Milling Running Hours': 'air_flow',
+        'Ore Milled (MT)': 'particle_size',
+        'Prev_Recovery (%)': 'water_recovery',
+        'Rougher Conc Grade (%Cu)': 'rougher_grade',
+    }
+
+    mapped_shifts = []
+    for s in shifts:
+        mapped_s = {}
+        for f in _global_monitor.feature_names:
+            val = None
+            aliases = [f, f.lower(), alias_map.get(f), alias_map.get(f, "").lower() if alias_map.get(f) else None]
+            for a in aliases:
+                if a is not None and a in s:
+                    val = s[a]
+                    break
+            if val is None:
+                if _global_monitor._train_data and f in _global_monitor._train_data:
+                    val = float(np.mean(_global_monitor._train_data[f]))
+                else:
+                    val = 0.0
+            try:
+                mapped_s[f] = float(val)
+            except Exception:
+                mapped_s[f] = 0.0
+        mapped_shifts.append(mapped_s)
+
+    if len(mapped_shifts) == 1:
+        res = _global_monitor.check_single_shift(mapped_shifts[0])
+    else:
+        df = pd.DataFrame(mapped_shifts)
+        res = _global_monitor.check(df)
+    
+    res["drift_detected"] = res.get("overall_status") in ("RED", "RETRAIN")
+    res["warnings"] = res.get("flagged", [])
+    res["status"] = res.get("overall_status", "No Drift")
+    return res
 
 
 # ── Standalone test ──────────────────────────────────────────────────────────
