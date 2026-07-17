@@ -4,3 +4,4 @@ __pycache__/
 .ipynb_checkpoints/
 .qodo/
 .env
+.DS_Store
