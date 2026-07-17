@@ -1,0 +1,155 @@
+% Resume — sample format match
+% Compile: pdflatex resume-iksha-labs.tex
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=0.75in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{newtxtext,newtxmath}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{hyperref}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue,
+  citecolor=black
+}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+\renewcommand{\familydefault}{\rmdefault}
+
+\titleformat{\section}
+  {\large\bfseries}
+  {}
+  {0pt}
+  {}
+  [\vspace{-2pt}\titlerule\vspace{4pt}]
+
+\titlespacing*{\section}{0pt}{10pt}{0pt}
+
+\newcommand{\resumeHeader}[2]{%
+  \noindent
+  \begin{tabular*}{\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}
+    \textbf{#1} & \textbf{#2} \\
+  \end{tabular*}%
+}
+
+\newcommand{\resumeSubheader}[2]{%
+  \noindent
+  \begin{tabular*}{\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}
+    \textit{#1} & \textit{#2} \\
+  \end{tabular*}\vspace{2pt}%
+}
+
+\newcommand{\resumeProjectTitle}[2]{%
+  \vspace{4pt}
+  \noindent
+  \begin{tabular*}{\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}
+    \textbf{#1} & \textbf{#2} \\
+  \end{tabular*}%
+}
+
+\newcommand{\resumeProjectSubtitle}[1]{%
+  \noindent\textit{#1}\vspace{2pt}%
+}
+
+\newcommand{\resumeEducationLocation}[1]{%
+  \noindent #1\vspace{4pt}%
+}
+
+\setlist[itemize]{leftmargin=*, topsep=2pt, itemsep=2pt, parsep=0pt, partopsep=0pt}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries Pracheer Srivastava}\\[8pt]
+  \small
+  Software Developer \textbar{} +91-7682866005 \textbar{}
+  \href{https://www.linkedin.com/in/pracheersrivastava}{LinkedIn} \textbar{}
+  \href{https://github.com/pracheersrivastava}{GitHub} \textbar{}
+  \href{mailto:pracheer2023@gmail.com}{pracheer2023@gmail.com}
+\end{center}
+
+\section{Summary}
+Computer Science student at VIT Bhopal with hands-on experience in full-stack web development, mobile engineering, and test automation. Built production apps with React, Next.js, Django, and Flutter; designed REST APIs and CI/CD pipelines on AWS, Azure, GCP, and Oracle OCI. Seeking software engineering roles to build scalable, high-impact products.
+
+\section{Skills}
+\textbf{Languages:} JavaScript \textperiodcentered{} TypeScript \textperiodcentered{} Python \textperiodcentered{} Java \textperiodcentered{} C++ \textperiodcentered{} SQL\\[2pt]
+\textbf{Frameworks \& Libraries:} React \textperiodcentered{} Next.js \textperiodcentered{} Node.js \textperiodcentered{} Django REST Framework \textperiodcentered{} Flutter \textperiodcentered{} Tailwind CSS \textperiodcentered{} Flask\\[2pt]
+\textbf{Cloud \& Infrastructure:} AWS \textperiodcentered{} Azure \textperiodcentered{} GCP \textperiodcentered{} Oracle OCI \textperiodcentered{} Docker \textperiodcentered{} CI/CD \textperiodcentered{} Ansible \textperiodcentered{} Grafana\\[2pt]
+\textbf{Data:} PostgreSQL \textperiodcentered{} MongoDB \textperiodcentered{} SQLite\\[2pt]
+\textbf{Tools \& Practices:} Cypress \textperiodcentered{} Page Object Model \textperiodcentered{} Postman \textperiodcentered{} Azure DevOps \textperiodcentered{} Git \textperiodcentered{} REST APIs \textperiodcentered{} Agile \textperiodcentered{} QA/UAT
+
+\section{Experience}
+
+\resumeHeader{Dynamatix Services Pvt.\ Ltd.\ (formerly Transition Computing India)}{Hyderabad, India}
+\resumeSubheader{Junior Intern}{July 2025 -- June 2026}
+\begin{itemize}
+  \item Built \textbf{Cypress + TypeScript} end-to-end test automation for a production fintech web platform across QA and UAT environments.
+  \item Developed \textbf{Page Object Model} test suites for core product modules including commitments workflows, affordability dashboards, and information requests.
+  \item Expanded smoke and regression coverage; built \textbf{Node.js} automated HTML test-report pipelines to support agile release cycles.
+  \item Hardened large E2E test suites with robust selectors, session recovery, and environment-aware fixtures.
+\end{itemize}
+
+\resumeHeader{Dynamatix Analytics Pvt.\ Ltd.}{Hyderabad, India}
+\resumeSubheader{Software Development Intern}{May 2025 -- June 2025}
+\begin{itemize}
+  \item Performed \textbf{UAT/QA}, \textbf{API testing} with \textbf{Postman}, and \textbf{bug tracking} in \textbf{Azure DevOps} across backend services built with \textbf{Node.js}, \textbf{TypeScript}, and \textbf{MongoDB}.
+  \item Validated REST endpoints, reproduced issues, and supported engineers through \textbf{SDLC} and \textbf{Agile} sprint workflows.
+\end{itemize}
+
+\section{Projects}
+
+\resumeProjectTitle{Veil Android}{April 2026 - Present}
+\resumeProjectSubtitle{Mobile Application \textperiodcentered{} April 2026}
+\begin{itemize}
+  \item Lead mobile engineer on a production \textbf{Flutter} Android app integrating TMDB metadata with \textbf{REST APIs} to an OMSS resolver hosted on \textbf{Oracle Cloud (OCI)}.
+  \item Built adaptive phone/tablet/TV UI, ExoPlayer HLS/DASH playback, Hive persistence, and shipped \textbf{50+ CI/CD releases} via GitHub Actions.
+  \item \href{https://github.com/dikshadamahe/veil-android}{GitHub}
+\end{itemize}
+
+\resumeProjectTitle{Bitcoin Signet Observability}{March 2026}
+\resumeProjectSubtitle{DevOps / Observability \textperiodcentered{} March 2026}
+\begin{itemize}
+  \item Solo-built production observability stack on an \textbf{Azure VM} (Ansible-provisioned): Grafana Alloy $\rightarrow$ Loki $\rightarrow$ Grafana with 14-panel dashboard, LogQL recording rules, and Telegram alerting.
+  \item Implemented dual-firewall security (\textbf{Azure NSG} + UFW), Docker Compose deployment, and reproducible infrastructure-as-code across 3 Ansible roles.
+  \item \href{https://github.com/pracheersrivastava/bitcoin-monitoring}{GitHub}
+\end{itemize}
+
+\resumeProjectTitle{NutriAtlas}{April 2026}
+\resumeProjectSubtitle{Health Tech Web Application \textperiodcentered{} April 2026}
+\begin{itemize}
+  \item Deployed a \textbf{Next.js 15} health and nutrition dashboard on \textbf{GCP Cloud Run} with responsive UI, Recharts analytics, and Docker + Cloud Build CI/CD pipeline.
+  \item Built scalable frontend widgets and containerized production deployment with standalone Next.js output.
+  \item \href{https://h2s-health-727128096395.asia-south1.run.app/}{Live demo} \textbar{} \href{https://github.com/pracheersrivastava/NutriAtlas}{GitHub}
+\end{itemize}
+
+\resumeProjectTitle{CHEM{\textbullet}VIZ}{February 2026}
+\resumeProjectSubtitle{Full-Stack Web Application \textperiodcentered{} February 2026}
+\begin{itemize}
+  \item Solo-built full-stack platform with \textbf{Django REST API} backend and \textbf{React} web app sharing one API across web, hosted backend, and desktop clients.
+  \item Designed REST endpoints for CSV ingestion, token auth, KPI dashboards, and PDF export with live production deployments.
+  \item \href{https://fossee-web.vercel.app}{fossee-web.vercel.app} \textbar{} \href{https://github.com/pracheersrivastava/fossee-web}{GitHub}
+\end{itemize}
+
+\resumeProjectTitle{SPARTA}{February 2025}
+\resumeProjectSubtitle{AI / Security Automation \textperiodcentered{} February 2025}
+\begin{itemize}
+  \item Co-developed an automated phishing detection system using \textbf{scikit-learn}, \textbf{Flask REST API}, and a Chrome extension for real-time URL analysis.
+  \item Built end-to-end ML pipeline from feature extraction to inference API and browser integration.
+  \item \href{https://github.com/pracheersrivastava/SPARTA_Extension}{GitHub}
+\end{itemize}
+
+\section{Education}
+
+\resumeHeader{VIT Bhopal University}{2023-2027}
+\resumeSubheader{B.Tech Computer Science \& Engineering (Cyber Security \& Digital Forensics) \textbar{} CGPA 8.54}{}
+\resumeEducationLocation{Bhopal, India}
+
+\end{document}

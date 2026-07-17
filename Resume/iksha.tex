@@ -1,0 +1,166 @@
+% Resume — Diksha Damahe (Tailored for Iksha Labs)
+% Compile: pdflatex iksha.tex
+
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[margin=0.5in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{newtxtext,newtxmath}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{hyperref}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue,
+  citecolor=black
+}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+\renewcommand{\familydefault}{\rmdefault}
+
+\titleformat{\section}
+  {\large\bfseries}
+  {}
+  {0pt}
+  {}
+  [\vspace{-2pt}\titlerule\vspace{3pt}]
+
+\titlespacing*{\section}{0pt}{8pt}{4pt}
+
+\newcommand{\resumeHeader}[2]{%
+  \noindent
+  \begin{tabular*}{\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}
+    \textbf{#1} & \textbf{#2} \\
+  \end{tabular*}%
+  \vspace{-2pt}
+}
+
+\newcommand{\resumeSubheader}[2]{%
+  \noindent
+  \begin{tabular*}{\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}
+    \textit{#1} & \textit{#2} \\
+  \end{tabular*}\vspace{1pt}%
+}
+
+\newcommand{\resumeProjectTitle}[2]{%
+  \vspace{2pt}
+  \noindent
+  \begin{tabular*}{\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}
+    \textbf{#1} & \textbf{#2} \\
+  \end{tabular*}%
+  \vspace{-2pt}
+}
+
+\newcommand{\resumeProjectSubtitle}[1]{%
+  \noindent\textit{#1}\vspace{1pt}%
+}
+
+\newcommand{\resumeEducationLocation}[1]{%
+  \noindent #1\vspace{2pt}%
+}
+
+\setlist[itemize]{leftmargin=*, topsep=1pt, itemsep=1pt, parsep=0pt, partopsep=0pt}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries Diksha Damahe}\\[4pt]
+  \small
+  B.Tech Computer Science \& Engineering (AI \& ML) \textbar{} +91 97709 25370 \textbar{} \href{mailto:dikshadamahe1@gmail.com}{dikshadamahe1@gmail.com} \\
+  \href{https://www.linkedin.com/in/dikshadamahe}{LinkedIn} \textbar{}
+  \href{https://github.com/dikshadamahe}{GitHub} \textbar{}
+  \href{https://orcid.org/0009-0002-0499-2572}{ORCID: 0009-0002-0499-2572} \textbar{}
+  \href{https://www.scopus.com/authid/detail.uri?authorId=60617196400}{Scopus ID: 60617196400}
+\end{center}
+
+\vspace{-4pt}
+
+\section{Summary}
+Computer Science student specializing in Artificial Intelligence and Machine Learning, with hands-on experience in full-stack engineering, ML model pipelines, and process automation. Built and deployed responsive, secure web platforms and cross-platform mobile apps with React, Next.js, Django, and Flutter. Passionate about automating complex workflows, optimizing codebases, and creating data-driven architectures.
+
+\section{Skills}
+\textbf{Languages:} Python \textperiodcentered{} TypeScript \textperiodcentered{} JavaScript \textperiodcentered{} Java \textperiodcentered{} C++ \textperiodcentered{} SQL\\[2pt]
+\textbf{Frameworks \& Libraries:} React.js \textperiodcentered{} Next.js \textperiodcentered{} Django REST Framework \textperiodcentered{} Node.js \textperiodcentered{} Flask \textperiodcentered{} Flutter \textperiodcentered{} Tailwind CSS\\[2pt]
+\textbf{Cloud \& DevOps:} AWS (EC2, S3, EBS) \textperiodcentered{} Git \textperiodcentered{} GitHub \textperiodcentered{} CI/CD Workflows \textperiodcentered{} Postman \textperiodcentered{} Render\\[2pt]
+\textbf{Databases:} PostgreSQL \textperiodcentered{} MongoDB \textperiodcentered{} SQLite\\[2pt]
+\textbf{Data \& AI/ML:} scikit-learn \textperiodcentered{} XGBoost \textperiodcentered{} SHAP \textperiodcentered{} Isolation Forest \textperiodcentered{} Pandas \textperiodcentered{} NumPy \textperiodcentered{} Feature Engineering
+
+\section{Experience}
+
+\resumeHeader{Hindustan Copper Limited (HCL)}{Malanjkhand, India}
+\resumeSubheader{Software Engineering Intern (AI/ML)}{June 2026 -- Present}
+\begin{itemize}
+  \item Developed and deployed \textbf{RecovAI}, an AI-based predictive analytics and industrial process monitoring system for a flotation concentrator plant.
+  \item Engineered anomaly detection pipelines and recommended optimal chemical dosages based on feed parameters, providing operators with data-driven decision support.
+\end{itemize}
+
+\section{Projects}
+
+\resumeProjectTitle{RecovAI (HCL Flotation Optimizer)}{June 2026 -- Present}
+\resumeProjectSubtitle{Lead Developer \textperiodcentered{} AI \& Backend Pipelines}
+\begin{itemize}
+  \item Solo-designed and trained an \textbf{XGBoost} regression model to forecast recovery rates with an \textbf{$R^2$ of 0.9720} and \textbf{MAE of 0.1042\%} based on 18+ months of real metallurgical data.
+  \item Developed a Reagent Dose Intelligence Engine to optimize SIPX, Frother, and pH levels, integrating an \textbf{Isolation Forest} model to detect tailing process anomalies.
+  \item Constructed a high-performance \textbf{FastAPI backend} routing predictive engines and serving an interactive Streamlit/web telemetry UI.
+  \item Configured automated SQL database backups, Model Tracking on Render, and integrated \textbf{Groq API} endpoints for LLM-powered shift summaries.
+  \item \href{https://github.com/dikshadamahe/RecovAI}{GitHub} \textbar{} \href{https://recovai-xys2.onrender.com}{Live Demo}
+\end{itemize}
+
+\resumeProjectTitle{Veil Android}{April 2026}
+\resumeProjectSubtitle{Cross-Platform Mobile Application}
+\begin{itemize}
+  \item Co-developed a minimalist Android streaming aggregator app utilizing \textbf{Flutter} (Dart) and \textbf{TypeScript} (resolver API).
+  \item Integrated TMDB REST APIs for rich metadata parsing and mapped custom video layouts featuring \textbf{ExoPlayer} HLS playback.
+  \item Integrated a self-hosted custom resolver (\texttt{cinepro-org/core} OMSS API) running on \textbf{Oracle Cloud (OCI)} to dynamically resolve streams.
+  \item Shipped over \textbf{50+ CI/CD releases} using automated GitHub Actions pipelines to streamline staging and QA processes.
+  \item \href{https://github.com/dikshadamahe/veil-android}{GitHub}
+\end{itemize}
+
+\resumeProjectTitle{Chemical Equipment Parameter Visualizer}{February 2026}
+\resumeProjectSubtitle{Hybrid Web + Desktop Application}
+\begin{itemize}
+  \item Engineered a hybrid parameter visualization suite using \textbf{Django REST Framework} for the backend and \textbf{React} for the frontend.
+  \item Built clean, responsive telemetry dashboards with \textbf{Chart.js}, rendering dynamic charts mapping chemical pressure, temperature, and flows.
+  \item Deployed the hybrid React app to production on Vercel while packing a standalone \textbf{PyQt5} desktop client executable for offline access.
+  \item \href{https://github.com/dikshadamahe/fossee-project}{GitHub} \textbar{} \href{https://fossee-project-eta.vercel.app}{Live Demo}
+\end{itemize}
+
+\resumeProjectTitle{Aegis Vault}{October 2025}
+\resumeProjectSubtitle{Secure Full-Stack Password Manager}
+\begin{itemize}
+  \item Built a dark, glassmorphic password manager featuring client-side zero-knowledge encryption algorithms.
+  \item Programmed a highly interactive frontend with silky transitions using \textbf{Next.js, TypeScript, Tailwind CSS, and Framer Motion}.
+  \item Designed secure credentials management and authentication with \textbf{NextAuth} on a \textbf{Prisma-backed MongoDB} stack.
+  \item \href{https://github.com/dikshadamahe/Aegis-Vault}{GitHub} \textbar{} \href{https://aegis-vault.vercel.app}{Live Demo}
+\end{itemize}
+
+\section{Publications}
+
+\resumeHeader{SPARTA: Phishing Website Detection}{}
+\resumeSubheader{IEEE International Students' Conference on Electrical, Electronics and Computer Science (SCEECS)}{Bhopal, India}
+\begin{itemize}
+  \item Developed the \textbf{Secure Phishing Analysis and Robust Training Algorithm (SPARTA)}, achieving a 99.15\% detection rate.
+  \item Engineered an end-to-end ML pipeline with \textbf{scikit-learn}, a \textbf{Flask REST API} backend, and a real-time URL analysis Chrome extension.
+\end{itemize}
+
+\section{Certifications}
+\begin{itemize}
+  \item \textbf{Applied Machine Learning in Python} -- University of Michigan (Nov 2025)
+  \item \textbf{AWS Certification Course} -- Intellipaat (Sep 2025)
+  \item \textbf{Mastery in JavaScript} -- Lernx (Aug 2025)
+  \item \textbf{Advanced SQL for Technical Interviews} -- Bosscoder Academy (Feb 2025)
+  \item \textbf{Cloud Computing} -- Elite NPTEL Online Certification, IIT Kharagpur (Jan--Apr 2025)
+\end{itemize}
+
+\section{Education}
+
+\resumeHeader{VIT Bhopal University}{Bhopal, India}
+\resumeSubheader{B.Tech CSE (Artificial Intelligence \& Machine Learning) \textbar{} CGPA: 8.06}{2023 -- 2027}
+
+\end{document}
