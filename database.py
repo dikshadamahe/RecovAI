@@ -43,6 +43,9 @@ _raw_db_url = os.environ.get("DATABASE_URL", "sqlite:///./recovai.db")
 # Neon/Vercel Postgres often use postgres://; SQLAlchemy expects postgresql://
 if _raw_db_url.startswith("postgres://"):
     _raw_db_url = "postgresql://" + _raw_db_url[len("postgres://") :]
+# SQLAlchemy 2 defaults to psycopg v3; we ship psycopg2-binary.
+if _raw_db_url.startswith("postgresql://") and "+psycopg" not in _raw_db_url:
+    _raw_db_url = "postgresql+psycopg2://" + _raw_db_url[len("postgresql://") :]
 DATABASE_URL = _raw_db_url
 
 engine = create_engine(
