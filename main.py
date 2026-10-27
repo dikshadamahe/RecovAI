@@ -1336,7 +1336,7 @@ async def history_prediction_detail(prediction_id: int, db: Session = Depends(ge
 
 
 # ═══════════════════════════════════════════════════════════════════
-# SECTION — UI (single-origin deploy: Render, VPS, etc.)
+# SECTION — UI (single-origin deploy: Vercel, VPS, etc.)
 # ═══════════════════════════════════════════════════════════════════
 
 @app.get("/")

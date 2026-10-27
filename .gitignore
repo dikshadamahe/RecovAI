@@ -4,6 +4,9 @@ __pycache__/
 .ipynb_checkpoints/
 .qodo/
 .env
+.env.local
+recovai.db
+.vercel
 .DS_Store
 Diksha Resume.pdf
 Tech Interns- Iksha Labs.pdf

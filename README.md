@@ -9,8 +9,8 @@ RecovAI is a full-stack application that helps plant operators and metallurgists
 ---
 
 ## Live Deployment
-- **Live Demo (on Render)**: [https://hcl-recovai.onrender.com](https://hcl-recovai.onrender.com)
-- **Database**: Managed PostgreSQL Database (Render)
+- **Hosting**: [Vercel](https://vercel.com) — FastAPI + UI on one origin (see [DEPLOY.md](./DEPLOY.md))
+- **Database**: Managed PostgreSQL ([Neon](https://neon.tech) or Vercel Marketplace) via `DATABASE_URL`
 - **Chatbot / NLP**: Agentic ReAct Tool-Calling Loop
 
 ---
@@ -340,7 +340,7 @@ Create `.env` in the project root (never commit this file):
 GROQ_API_KEY=gsk-your-key-here
 ```
 
-Optional: override the database URL (default is local SQLite):
+Optional: override the database URL (default is local SQLite). **Production on Vercel must use Postgres**, not SQLite — see [DEPLOY.md](./DEPLOY.md).
 
 ```env
 DATABASE_URL=sqlite:///./recovai.db

@@ -193,7 +193,7 @@ table.hcl tbody tr:hover{background:#F5E6D0}
 
 <!-- Change 10: Demo Mode Banner -->
 <div id="demoBanner" style="display:none;background:#FFF8E1;border-bottom:2px solid #FFA000;padding:8px 16px;font-size:13px;color:#5C2E00;position:relative">
-  ⚠️ Server waking up or unreachable — Render free tier can take up to 90 seconds on first load. Wait, then refresh. Some features use offline estimates until connected.
+  ⚠️ Server waking up or unreachable — the first request after idle can take up to 90 seconds while models load. Wait, then refresh. Some features use offline estimates until connected.
   <button onclick="document.getElementById('demoBanner').style.display='none'" aria-label="Dismiss banner" style="position:absolute;right:12px;top:8px;background:none;border:none;font-size:16px;cursor:pointer;color:#5C2E00">✕</button>
 </div>
 
@@ -1234,7 +1234,7 @@ function switchTab(btn,panelId){
    Deployed: same origin. Local static server (port 5500): localhost:8000.
 ═══════════════════════════════════════════════════════ */
 const LOCAL_API = 'http://localhost:8000';
-const PROD_API = 'https://hcl-recovai.onrender.com';
+const PROD_API = window.location.origin;
 
 const IS_LOCAL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 const API = IS_LOCAL
@@ -2301,7 +2301,7 @@ async function checkBackendStatus(){
   const el = document.getElementById('backend_status');
   const tc = document.getElementById('today_count');
   if(!el) return;
-  el.innerHTML = '<span style="color:#FFA000">● Connecting… (first load may take up to 90s on Render)</span>';
+  el.innerHTML = '<span style="color:#FFA000">● Connecting… (first load may take up to 90s while the server wakes)</span>';
   try{
     const res = await fetch(API+'/health');
     const data = await res.json();

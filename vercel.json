@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "fluid": true,
+  "functions": {
+    "main.py": {
+      "maxDuration": 300,
+      "excludeFiles": "{train_*.py,recov_*.py,recovai_train.py,**/*.ipynb,**/__pycache__/**,.venv/**,recovai_output/**,engines/**,Resume/**,render.yaml,docker-compose.yml,deploy/**,*.pdf}"
+    }
+  },
+  "crons": [
+    {
+      "path": "/health",
+      "schedule": "0 */6 * * *"
+    }
+  ]
+}

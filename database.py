@@ -39,7 +39,11 @@ from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 # ── Database URL ─────────────────────────────────────────────────────────────
 # Default: SQLite file in the project root.
 # Override by setting the DATABASE_URL environment variable.
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./recovai.db")
+_raw_db_url = os.environ.get("DATABASE_URL", "sqlite:///./recovai.db")
+# Neon/Vercel Postgres often use postgres://; SQLAlchemy expects postgresql://
+if _raw_db_url.startswith("postgres://"):
+    _raw_db_url = "postgresql://" + _raw_db_url[len("postgres://") :]
+DATABASE_URL = _raw_db_url
 
 engine = create_engine(
     DATABASE_URL,

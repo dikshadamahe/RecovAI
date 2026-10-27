@@ -1,0 +1,21 @@
+# Fallback for Vercel container functions. Copy to repo root as Dockerfile.vercel to use.
+FROM python:3.12-slim-bookworm
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY main.py database.py hcl_recovai_v3.html shifts_dataset.csv ./
+COPY engine1_reagent.py engine2_anomaly.py engine3_shap.py engine4_psi.py engine5_nlp.py ./
+COPY models/ models/
+COPY assets/ assets/
+
+ENV PORT=8080
+EXPOSE 8080
+
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT}
